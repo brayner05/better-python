@@ -1,0 +1,32 @@
+
+struct Item
+    id: int
+    name: string
+    def __repr__(self) -> string
+        return f"id: {id} name: {name}"
+    enddef
+endstruct
+
+
+enum MenuOptions
+    Option1,
+    Option2,
+    Option3
+endenum
+
+
+def fact(n: int) -> int
+    x: int = 1
+    for i in 1..=n do
+        x += i
+    done
+    return x
+enddef
+
+
+if __name__ == "__main__" then
+    nums = List<int>::of(1, 2, 3, 4, 5)
+    facts = nums.map((n) -> fact(n))
+    println(nums)
+    println(facts)
+endif
