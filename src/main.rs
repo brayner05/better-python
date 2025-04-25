@@ -25,8 +25,13 @@ fn run_repl() {
         }
 
         let lexer_result = lexer::scan_all_tokens(line.trim());
-        if let Err(e) = lexer_result {
+        if let Err(e) = &lexer_result {
             eprintln!("{}", e);
+        }
+
+        let mut token_stream = lexer_result.unwrap();
+        while let Some(token) = token_stream.next_token() {
+            println!("{}", token.as_ref());
         }
 
         line.clear();

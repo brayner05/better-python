@@ -1,10 +1,10 @@
 use core::fmt;
-use std::{fmt::write, ops::Range, rc::Rc};
+use std::{collections::HashMap, fmt::write, ops::Range, rc::Rc};
 
 use color_eyre::eyre::{self, Error, Ok, eyre};
 
 
-
+#[derive(Debug, Clone)]
 pub enum TokenType {
     Plus, PlusEqual, Minus, MinusEqual,
     Asterisk, AsteriskAsterisk, AsteriskEqual, 
@@ -14,11 +14,11 @@ pub enum TokenType {
     Equal, EqualEqual, Bang, BangEqual, And,
     Or, Less, LessEqual, Greater, GreaterEqual,
 
-    Dot, Comma, LeftParen, RightParen, LeftBracket, RightBracket,
+    Dot, DotDot, Comma, LeftParen, RightParen, LeftBracket, RightBracket,
     LeftBrace, RightBrace, Underscore, Colon, ScopeOperator, RightArrow,
 
-    Float(f64), Integer(f64), Boolean(bool),
-    String(String), FormatString(String),
+    Float, Integer, True, False,
+    String, FormatString,
     Identifier,
 
     Enum, EndEnum, Struct, EndStruct, Def, EndDef,
@@ -29,11 +29,17 @@ pub enum TokenType {
 }
 
 
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub enum PieValue {
     FloatLiteral(f32), IntegerLiteral(i32),
-    BoolLiteral(bool), StringLiteral(String),
-    FormatStringLiteral(String)
+    StringLiteral(String), FormatStringLiteral(String)
 }
 
 
@@ -45,8 +51,6 @@ impl fmt::Display for PieValue {
 
             PieValue::IntegerLiteral(v) => write!(f, "Integer({})", v)?,
 
-            PieValue::BoolLiteral(v) => write!(f, "{}", v)?,
-
             PieValue::StringLiteral(v) 
                 | PieValue::FormatStringLiteral(v)
                 => write!(f, "\"{}\"", v)?,
@@ -56,10 +60,21 @@ impl fmt::Display for PieValue {
 }
 
 
+#[derive(Debug)]
 pub struct PieToken {
     type_: TokenType,
     lexeme: String,
     value: Option<PieValue>
+}
+
+
+impl fmt::Display for PieToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Token\t|\t{} \"{}\" {}", self.type_, self.lexeme, match &self.value {
+            Some(val) => val.to_string(),
+            None => String::new(),
+        })
+    }
 }
 
 
@@ -77,6 +92,7 @@ impl PieToken {
 pub trait CanBeEOF {
     fn is_eof(&self) -> bool;
 }
+
 
 
 pub struct PieTokenStream {
@@ -171,9 +187,41 @@ impl <'a> Cursor <'a> {
 }
 
 
+struct KeywordLookup {
+    keyword_tokens: HashMap<String, TokenType>
+}
+
+
+impl KeywordLookup {
+    pub fn create() -> Self {
+        let mut map = HashMap::new();
+        
+        map.insert(String::from("enum"), TokenType::Enum);
+        map.insert(String::from("endenum"), TokenType::EndEnum);
+        map.insert(String::from("struct"), TokenType::Struct);
+        map.insert(String::from("endstruct"), TokenType::EndStruct);
+        map.insert(String::from("if"), TokenType::If);
+        map.insert(String::from("endif"), TokenType::EndIf);
+        map.insert(String::from("else"), TokenType::Else);
+        map.insert(String::from("def"), TokenType::Def);
+        map.insert(String::from("enddef"), TokenType::EndDef);
+        map.insert(String::from("for"), TokenType::For);
+        map.insert(String::from("do"), TokenType::Do);
+        map.insert(String::from("done"), TokenType::Done);
+        map.insert(String::from("while"), TokenType::While);
+        map.insert(String::from("true"), TokenType::True);
+        map.insert(String::from("false"), TokenType::False);
+        map.insert(String::from("return"), TokenType::Return);
+        map.insert(String::from("break"), TokenType::Break);
+        map.insert(String::from("continue"), TokenType::Continue);
+
+        Self { keyword_tokens: map }
+    }
+}
+
+
 // Private
 struct Lexer <'a> {
-    source: &'a str,
     cursor: Cursor<'a>,
     line: u64,
     column: u32,
@@ -184,7 +232,6 @@ struct Lexer <'a> {
 impl <'a> Lexer <'a> {
     pub fn new(source: &'a str) -> Self {
         Lexer { 
-            source: source, 
             cursor: Cursor::new(source), 
             line: 0, 
             column: 0,
@@ -214,6 +261,7 @@ impl <'a> Lexer <'a> {
     fn next(&mut self) -> Option<char> {
         let next_char = self.cursor.current();
         self.cursor.advance_right();
+        self.column += 1;
         next_char
     }
 
@@ -230,36 +278,141 @@ impl <'a> Lexer <'a> {
         if ch.is_none() {
             return Err(eyre!("Reached the end of the input file."))
         }
+
         match ch.unwrap() {
+            ' ' | '\r' | '\t' => {}
+
+            '\n' => {
+                self.line += 1;
+                self.column = 1;
+            },
+
             // Digraph operators
-            '+' if self.match_peek('=') 
-                => self.add_token(TokenType::PlusEqual, None),
+            '+' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::PlusEqual, None)
+            },
 
-            '-' if self.match_peek('=')
-                => self.add_token(TokenType::MinusEqual, None),
+            '-' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::MinusEqual, None)
+            },
 
-            '*' if self.match_peek('=')
-                => self.add_token(TokenType::AsteriskEqual, None),
+            '-' if self.match_peek('>') => {
+                self.next();
+                self.add_token(TokenType::RightArrow, None)
+            },
 
-            '*' if self.match_peek('*')
-                => self.add_token(TokenType::AsteriskAsterisk, None),
+            '*' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::AsteriskEqual, None)
+            },
 
-            '/' if self.match_peek('=')
-                => self.add_token(TokenType::SlashEqual, None),
+            '*' if self.match_peek('*') => {
+                self.next();
+                self.add_token(TokenType::AsteriskAsterisk, None)
+            },
 
-            '%' if self.match_peek('=')
-                => self.add_token(TokenType::ModulusEqual, None),
+            '/' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::SlashEqual, None)
+            },
 
-            '=' if self.match_peek('=')
-                => self.add_token(TokenType::EqualEqual, None),
+            '%' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::ModulusEqual, None)
+            },
 
-            '!' if self.match_peek('=')
-                => self.add_token(TokenType::BangEqual, None),
+            '=' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::EqualEqual, None)
+            },
+
+            '!' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::BangEqual, None)
+            },
+
+            '<' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::LessEqual, None)
+            },
+
+            '>' if self.match_peek('=') => {
+                self.next();
+                self.add_token(TokenType::GreaterEqual, None)
+            },
+
+            '&' if self.match_peek('&') => {
+                self.next();
+                self.add_token(TokenType::And, None)
+            },
+
+            '|' if self.match_peek('|') => {
+                self.next();
+                self.add_token(TokenType::Or, None)
+            },
+
+            ':' if self.match_peek(':') => {
+                self.next();
+                self.add_token(TokenType::ScopeOperator, None)
+            },
+
+            '.' if self.match_peek('.') => {
+                self.next();
+                self.add_token(TokenType::DotDot, None)
+            },
+
 
             // Single Grapheme Operators
             '+' => self.add_token(TokenType::Plus, None),
 
             '-' => self.add_token(TokenType::Minus, None),
+
+            '*' => self.add_token(TokenType::Asterisk, None),
+
+            '/' => self.add_token(TokenType::Slash, None),
+
+            '%' => self.add_token(TokenType::Modulus, None),
+
+            /**************************************************
+             * Other single character tokens
+             **************************************************/
+            '@' => self.add_token(TokenType::At, None),
+
+            '!' => self.add_token(TokenType::Bang, None),
+
+            '=' => self.add_token(TokenType::Equal, None),
+
+            '<' => self.add_token(TokenType::Less, None),
+
+            '>' => self.add_token(TokenType::Greater, None),
+
+            '.' => self.add_token(TokenType::Dot, None),
+
+            ',' => self.add_token(TokenType::Comma, None),
+
+            '(' => self.add_token(TokenType::LeftParen, None),
+
+            ')' => self.add_token(TokenType::RightParen, None),
+
+            '[' => self.add_token(TokenType::LeftBracket, None),
+
+            ']' => self.add_token(TokenType::RightBracket, None),
+
+            '{' => self.add_token(TokenType::LeftBrace, None),
+
+            '}' => self.add_token(TokenType::RightBrace, None),
+
+            '_' => self.add_token(TokenType::Underscore, None),
+
+            ':' => self.add_token(TokenType::Colon, None),
+
+            alpha if alpha.is_alphabetic() => self.scan_keyword(),
+
+            digit if digit.is_digit(10) => self.scan_numeric(),
+
+            '\"' => self.scan_string()?,
 
             _ => return Err(eyre!("Unexpected: {}", ch.unwrap()))
         };
@@ -268,11 +421,74 @@ impl <'a> Lexer <'a> {
     }
 
 
+    fn scan_string(&mut self) -> eyre::Result<()> {
+        while self.has_next() && self.peek().unwrap() != '\"' {
+            self.next();
+        }
+
+        if !self.has_next() {
+            return Err(eyre!("Unterminated string at: {}:{}", self.line, self.column));
+        }
+
+        self.next(); // Skip terminating quote
+        let lexeme = self.cursor.capture();
+        let value = PieValue::StringLiteral(lexeme[1..lexeme.len() - 1].to_string());
+
+        let token = PieToken::new(TokenType::String, &lexeme, Some(value));
+        self.token_list.push(Rc::new(token));
+
+        Ok(())
+    }
+
+
+    fn scan_numeric(&mut self) {
+        while self.has_next() && self.peek().unwrap().is_digit(10) {
+            self.next();
+        }
+
+        if let Some('.') = self.peek() {
+            self.next();
+            while self.has_next() && self.peek().unwrap().is_digit(10) {
+                self.next();
+            }
+            let lexeme = self.cursor.capture();
+            let float_value = PieValue::FloatLiteral(lexeme.parse().unwrap());
+            let token = PieToken::new(TokenType::Float, &lexeme, Some(float_value));
+            self.token_list.push(Rc::new(token));
+            return;
+        }
+
+        let lexeme = self.cursor.capture();
+        let int_value = PieValue::IntegerLiteral(lexeme.parse().unwrap());
+        let token = PieToken::new(TokenType::Integer, &lexeme, Some(int_value));
+        self.token_list.push(Rc::new(token));
+    }
+
+
+    fn scan_keyword(&mut self) {
+        while self.has_next() && self.peek().unwrap().is_alphanumeric() {
+            self.next();
+        }
+
+        let lexeme = self.cursor.capture();
+        let keywords = KeywordLookup::create();
+
+        if let Some(kw) = keywords.keyword_tokens.get(&lexeme) {
+            self.add_token(kw.clone(), None);
+            return;
+        }
+
+        self.add_token(TokenType::Identifier, None);
+    }
+
+
     pub fn tokenize(&mut self) -> eyre::Result<()> {
-        while let Some(ch) = self.peek() {
+        while self.peek().is_some() {
             self.scan_token()?;
             self.cursor.advance_left_to_right();
         }
+
+        self.token_list.push(Rc::new(PieToken::new(TokenType::Eof, "", None)));
         Ok(())
     }
 }
