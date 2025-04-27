@@ -2,6 +2,7 @@ use std::io::{self, Write};
 use color_eyre::*;
 
 mod lexer;
+mod parser;
 
 ///
 /// Continouously reads lines from the user until the specified exit command

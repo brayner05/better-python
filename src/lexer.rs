@@ -1,7 +1,7 @@
 use core::fmt;
-use std::{collections::HashMap, fmt::write, ops::Range, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
-use color_eyre::eyre::{self, Error, Ok, eyre};
+use color_eyre::eyre::{self, Ok, eyre};
 
 
 #[derive(Debug, Clone)]
@@ -36,9 +36,13 @@ impl fmt::Display for TokenType {
 }
 
 
+///
+/// A struct for tracking token values, seeing as they can be of
+/// a variety of types.
+/// 
 #[derive(Debug, Clone)]
 pub enum PieValue {
-    FloatLiteral(f32), IntegerLiteral(i32),
+    FloatLiteral(f64), IntegerLiteral(i64),
     StringLiteral(String), FormatStringLiteral(String)
 }
 
@@ -60,11 +64,29 @@ impl fmt::Display for PieValue {
 }
 
 
+///
+/// # Overview
+/// `PieToken` represents a singular unit with meaning in
+/// this language. For example, the following code:
+/// ```
+/// for i in 0..10 do
+///     print("Hello, World!")
+/// done
+/// ```
+/// Is made of the following tokens:
+/// ```
+/// [for] [name 'i'] [in] [range 0-10] [do] [name 'print'] [LeftParen] [string 'Hello, World!'] [RightParen] [done]
+/// ```
+/// 
+/// # Members
+/// - `type_: TokenType`            - The type of the token.
+/// - `lexeme: String`              - The actual text representation of the token in the code.
+/// - `value: Option<PieValue>`     - The actual in-memory representation of the token, if applicable.
 #[derive(Debug)]
 pub struct PieToken {
-    type_: TokenType,
-    lexeme: String,
-    value: Option<PieValue>
+    pub type_: TokenType,
+    pub lexeme: String,
+    pub value: Option<PieValue>
 }
 
 
@@ -89,18 +111,31 @@ impl PieToken {
 }
 
 
-pub trait CanBeEOF {
+///
+/// # Overview
+/// A trait for testing against EOF.
+/// 
+pub trait CanBeEof {
     fn is_eof(&self) -> bool;
 }
 
 
 
+///
+/// # Overview
+/// An iterable stream of tokens. Note that after consuming a token,
+/// that token is no longer valid, and will be removed from the iterator.
+/// 
+/// # Members
+/// - `tokens: Vec<Rc<PieToken>>` - The raw list of tokens scanned from the source
+/// code.
+/// 
 pub struct PieTokenStream {
     tokens: Vec<Rc<PieToken>>
 }
 
 
-impl CanBeEOF for PieTokenStream {
+impl CanBeEof for PieTokenStream {
     fn is_eof(&self) -> bool {
         self.is_eof_internal()
     }
@@ -108,6 +143,10 @@ impl CanBeEOF for PieTokenStream {
 
 
 impl PieTokenStream {
+    ///
+    /// Convert a vector of tokens into a `PieTokenStream`. Note that
+    /// `tokens` is moved inside of the `PieTokenStream` object here.
+    /// 
     pub fn from(tokens: Vec<Rc<PieToken>>) -> Self {
         PieTokenStream { 
             tokens: tokens 
@@ -120,6 +159,9 @@ impl PieTokenStream {
     }
 
 
+    ///
+    /// Consume and return the next token in the stream if one exists.
+    /// 
     pub fn next_token(&mut self) -> Option<Rc<PieToken>> {
         if self.tokens.is_empty() {
             return None;
@@ -127,9 +169,37 @@ impl PieTokenStream {
         let first = self.tokens.remove(0);
         Some(first)
     }
+
+
+    ///
+    /// Get the next token in the stream without advancing the pointer, 
+    /// if a next token exists.
+    /// 
+    pub fn peek(&self) -> Option<Rc<PieToken>> {
+        self.tokens.first().cloned()
+    }
 }
 
 
+
+///
+/// # Overview
+/// 
+/// An abstraction around substrings and views, allowing for more readable
+/// code. I.e. Rather than
+/// ```
+/// let lexeme = &source[start..end];
+/// ```
+/// we can do:
+/// ```
+/// let lexeme = cursor.capture();
+/// ```
+/// 
+/// # Members
+/// - `source: &'a str`  - a reference to the source code.
+/// - `left: u128`       - the left pointer, inclusive.
+/// - `right: u128`      - the right pointer, exclusive.
+/// 
 struct Cursor <'a> {
     source: &'a str,
     left: u128,
@@ -137,7 +207,7 @@ struct Cursor <'a> {
 }
 
 
-impl <'a> CanBeEOF for Cursor <'a> {
+impl <'a> CanBeEof for Cursor <'a> {
     fn is_eof(&self) -> bool {
         self.is_eof_internal()
     }
@@ -187,6 +257,9 @@ impl <'a> Cursor <'a> {
 }
 
 
+///
+/// Used to lookup keywords based on lexemes.
+/// 
 struct KeywordLookup {
     keyword_tokens: HashMap<String, TokenType>
 }
@@ -220,7 +293,23 @@ impl KeywordLookup {
 }
 
 
-// Private
+///
+/// # Overview
+/// Takes a scripts source code as input, and outputs the corresponding
+/// sequence of tokens. I.e. The `Lexer` struct is a collection of NFAs 
+/// that are used to match substrings to tokens.
+/// 
+/// # Members
+/// - `cursor: Cursor<'a>` - The cursor used to track where in the source code the next token 
+///                          will be.
+/// 
+/// - `line` - The current line of the script.
+/// 
+/// - `column` - The current column on the current line.
+/// 
+/// - `token_list: Vec<Rc<PieToken>>` - The list of all tokens that have been scanned 
+///                                     thus far.
+/// 
 struct Lexer <'a> {
     cursor: Cursor<'a>,
     line: u64,
