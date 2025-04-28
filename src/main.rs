@@ -31,10 +31,14 @@ fn run_repl() {
         }
 
         let mut token_stream = lexer_result.unwrap();
-        while let Some(token) = token_stream.next_token() {
-            println!("{}", token.as_ref());
+        
+        let parser_result = parser::generate_ast(&mut token_stream);
+        if let Err(e) = &parser_result {
+            eprintln!("{}", e);
         }
 
+        let ast = parser_result.unwrap();
+        println!("{}", ast);
         line.clear();
     }
 }

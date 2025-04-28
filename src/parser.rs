@@ -1,22 +1,68 @@
+use core::fmt;
 use std::rc::Rc;
 
 use color_eyre::eyre::{self, eyre};
 
-use crate::lexer::{self, CanBeEOF, PieToken, PieTokenStream, PieValue, TokenType};
+use crate::lexer::{self, CanBeEof, PieToken, PieTokenStream, PieValue, TokenType};
 
 
 #[derive(Debug)]
 pub enum AstNode {
     UnaryOperation { operator: UnaryOperator, operand: Rc<AstNode> },
+    BinaryOperation { operator: BinaryOperator, lhs: Rc<AstNode>, rhs: Rc<AstNode> },
 
     IntegerLiteral(i64), FloatLiteral(f64), BooleanLiteral(bool),
     StringLiteral(String), Identifier(String)
 }
 
 
+impl fmt::Display for AstNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AstNode::UnaryOperation { 
+                operator, 
+                operand 
+            } => write!(f, "({} {})", operator, operand.as_ref()),
+
+            AstNode::BinaryOperation { 
+                operator, 
+                lhs, 
+                rhs 
+            } => write!(f, "({}, {}, {})", operator, lhs.as_ref(), rhs.as_ref()),
+
+            _ => write!(f, "{:?}", self)
+        }
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Minus, LogicalNot
+}
+
+
+impl fmt::Display for UnaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub enum BinaryOperator {
+    Plus, Minus, Asterisk, Slash,
+    PlusEqual, MinusEqual, AsteriskEqual, SlashEqual,
+    Equal, EqualEqual, BangEqual, Less, Greater,
+    LessEqual, GreaterEqual,
+    Or, And
+}
+
+
+impl fmt::Display for BinaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 
@@ -51,42 +97,51 @@ impl <'a> Parser <'a> {
     }
 
 
-    fn parse_program(&mut self) -> eyre::Result<AstNode> {
+    fn parse_program(&mut self) -> eyre::Result<Rc<AstNode>> {
         self.parse_statement()
     }
 
 
-    fn parse_statement(&mut self) -> eyre::Result<AstNode> {
+    fn parse_statement(&mut self) -> eyre::Result<Rc<AstNode>> {
+        self.parse_operation()
     }
 
 
-    fn parse_struct_definition(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_struct_definition(&mut self) -> eyre::Result<Rc<AstNode>> {
 
-    }
-
-
-    fn parse_enum_definition(&mut self) -> eyre::Result<AstNode> {
-
-    }
+    // }
 
 
-    fn parse_struct_member(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_enum_definition(&mut self) -> eyre::Result<AstNode> {
 
-    }
-
-
-    fn parse_expression(&mut self) -> eyre::Result<AstNode> {
-
-    }
+    // }
 
 
-    fn parse_lambda(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_struct_member(&mut self) -> eyre::Result<AstNode> {
 
-    }
+    // }
+
+
+    // fn parse_expression(&mut self) -> eyre::Result<AstNode> {
+
+    // }
+
+
+    // fn parse_lambda(&mut self) -> eyre::Result<AstNode> {
+
+    // }
 
 
     fn parse_operation(&mut self) -> eyre::Result<Rc<AstNode>> {
+        let mut left = self.parse_unary()?;
 
+        while self.has_next() && TokenType::is_binary_operator(self.peek().as_ref()) {
+            let operator = self.next_token();
+            let right = self.parse_unary()?;
+            left = Rc::new(AstNode::BinaryOperation { operator: BinaryOperator::PlusEqual, lhs: left, rhs: right })
+        }
+
+        Ok(left)
     }
 
 
@@ -152,56 +207,67 @@ impl <'a> Parser <'a> {
                 Ok(node)
             }
 
-            LeftParen => {
-                self.next_token();
-                let result = self.parse_operation();
-                if result.is_err() {
-                    return result;
-                }
-
-                // ! Left off here
-                match result {
-                    Ok(node) => {},
-                    Err(e) => Err(e),
-                }
-            }
+            LeftParen => self.parse_parentheses(),
 
             _ => Err(eyre!("Unexpected token: {}", token.lexeme))
         }
     }
 
 
-    fn parse_operation_tail(&mut self) -> eyre::Result<AstNode> {
+    fn parse_parentheses(&mut self) -> eyre::Result<Rc<AstNode>> {
+        self.next_token();
+        let expr = self.parse_operation()?;
 
+        if !self.has_next() {
+            return Err(eyre!("Expected ')'"));
+        }
+
+        let right_paren = self.peek();
+
+        return match right_paren.type_ {
+            TokenType::RightParen => Ok(expr),
+            _ => Err(eyre!("Expected ')'"))
+        };
     }
 
 
-    fn parse_variable_assignment(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_operation_tail(&mut self) -> eyre::Result<AstNode> {
 
-    }
-
-
-    fn parse_function_definition(&mut self) -> eyre::Result<AstNode> {
-
-    }
+    // }
 
 
-    fn parse_function_body(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_variable_assignment(&mut self) -> eyre::Result<AstNode> {
 
-    }
-
-
-    fn parse_if_statement(&mut self) -> eyre::Result<AstNode> {
-
-    }
+    // }
 
 
-    fn parse_for_in_loop(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_function_definition(&mut self) -> eyre::Result<AstNode> {
 
-    }
+    // }
 
 
-    fn parse_while_loop(&mut self) -> eyre::Result<AstNode> {
+    // fn parse_function_body(&mut self) -> eyre::Result<AstNode> {
 
-    }
+    // }
+
+
+    // fn parse_if_statement(&mut self) -> eyre::Result<AstNode> {
+
+    // }
+
+
+    // fn parse_for_in_loop(&mut self) -> eyre::Result<AstNode> {
+
+    // }
+
+
+    // fn parse_while_loop(&mut self) -> eyre::Result<AstNode> {
+
+    // }
+}
+
+
+pub fn generate_ast(token_stream: &mut PieTokenStream) -> eyre::Result<Rc<AstNode>> {
+    let mut parser = Parser::new(token_stream);
+    parser.parse_program()
 }

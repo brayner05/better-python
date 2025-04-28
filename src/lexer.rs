@@ -4,7 +4,7 @@ use std::{collections::HashMap, rc::Rc};
 use color_eyre::eyre::{self, Ok, eyre};
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Plus, PlusEqual, Minus, MinusEqual,
     Asterisk, AsteriskAsterisk, AsteriskEqual, 
@@ -32,6 +32,22 @@ pub enum TokenType {
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+
+impl TokenType {
+    pub fn is_binary_operator(token: &PieToken) -> bool {
+        use TokenType::*;
+
+        vec![
+            And, Or, 
+            Plus, Minus, Asterisk, AsteriskAsterisk,
+            PlusEqual, MinusEqual, AsteriskEqual,
+            Slash, SlashEqual, Equal,
+            EqualEqual, BangEqual, Less, Greater,
+            LessEqual, GreaterEqual
+        ].contains(&token.type_)
     }
 }
 

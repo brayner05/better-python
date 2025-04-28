@@ -17,7 +17,7 @@ endenum
 
 def fact(n: int) -> int
     x: int = 1
-    for i in 1..=n do
+    for i in 1..(n+1) do
         x += i
     done
     return x
