@@ -12,7 +12,10 @@ pub enum AstNode {
     BinaryOperation { operator: BinaryOperator, lhs: Rc<AstNode>, rhs: Rc<AstNode> },
 
     IntegerLiteral(i64), FloatLiteral(f64), BooleanLiteral(bool),
-    StringLiteral(String), Identifier(String)
+    StringLiteral(String), Identifier(String),
+
+    LambdaFunction { params: Vec<Rc<AstNode>>, body: Vec<Rc<AstNode>> },
+    FunctionDefinition(FunctionDefinition)
 }
 
 
@@ -28,11 +31,26 @@ impl fmt::Display for AstNode {
                 operator, 
                 lhs, 
                 rhs 
-            } => write!(f, "({}, {}, {})", operator, lhs.as_ref(), rhs.as_ref()),
+            } => write!(f, "({} {}, {})", operator, lhs.as_ref(), rhs.as_ref()),
 
             _ => write!(f, "{:?}", self)
         }
     }
+}
+
+
+pub enum Literal {
+    Integer(i64), Float(f64), Boolean(bool),
+    String(String), Identifier(String)
+}
+
+
+#[derive(Debug)]
+pub struct FunctionDefinition {
+    pub name: String,
+    pub return_type: TokenType,
+    pub param_list: Vec<Rc<AstNode>>,
+    pub body: Vec<Rc<AstNode>>
 }
 
 
@@ -53,9 +71,38 @@ impl fmt::Display for UnaryOperator {
 pub enum BinaryOperator {
     Plus, Minus, Asterisk, Slash,
     PlusEqual, MinusEqual, AsteriskEqual, SlashEqual,
+    Modulus, ModulusEqual,
     Equal, EqualEqual, BangEqual, Less, Greater,
     LessEqual, GreaterEqual,
     Or, And
+}
+
+
+impl BinaryOperator {
+    pub fn from(token: &PieToken) -> Option<Self> {
+        match token.type_ {
+            TokenType::Plus => Some(Self::Plus),
+            TokenType::PlusEqual => Some(Self::PlusEqual),
+            TokenType::Minus => Some(Self::Minus),
+            TokenType::MinusEqual => Some(Self::MinusEqual),
+            TokenType::Asterisk => Some(Self::Asterisk),
+            TokenType::AsteriskEqual => Some(Self::AsteriskEqual),
+            TokenType::Slash => Some(Self::Slash),
+            TokenType::SlashEqual => Some(Self::SlashEqual),
+            TokenType::Modulus => Some(Self::Modulus),
+            TokenType::ModulusEqual => Some(Self::ModulusEqual),
+            TokenType::Equal => Some(Self::Equal),
+            TokenType::EqualEqual => Some(Self::EqualEqual),
+            TokenType::BangEqual => Some(Self::BangEqual),
+            TokenType::And => Some(Self::And),
+            TokenType::Or => Some(Self::Or),
+            TokenType::Less => Some(Self::Less),
+            TokenType::LessEqual => Some(Self::LessEqual),
+            TokenType::Greater => Some(Self::Greater),
+            TokenType::GreaterEqual => Some(Self::GreaterEqual),
+            _ => None
+        }
+    }
 }
 
 
@@ -97,12 +144,21 @@ impl <'a> Parser <'a> {
     }
 
 
-    fn parse_program(&mut self) -> eyre::Result<Rc<AstNode>> {
-        self.parse_statement()
+    fn parse_program(&mut self) -> eyre::Result<Vec<Rc<AstNode>>> {
+        let mut statements = vec![];
+        statements.push(self.parse_statement()?);
+        Ok(statements)
     }
 
 
     fn parse_statement(&mut self) -> eyre::Result<Rc<AstNode>> {
+        let next = self.peek();
+
+        match next.type_.clone() {
+            TokenType::Def => return self.parse_function_definition(),
+            _ => {}
+        }
+
         self.parse_operation()
     }
 
@@ -127,18 +183,71 @@ impl <'a> Parser <'a> {
     // }
 
 
-    // fn parse_lambda(&mut self) -> eyre::Result<AstNode> {
+    fn expect_next(&self, type_: TokenType) -> eyre::Result<()> {
+        if !self.has_next() {
+            return Err(eyre!("Reached end of token stream"));
+        }
 
-    // }
+        let next = self.peek().type_.clone();
+        if next != type_ {
+            return Err(eyre!("Expected {} found {}", type_, next))
+        }
+
+        Ok(())
+    }
+
+
+    fn parse_param_list(&mut self) -> eyre::Result<Vec<Rc<AstNode>>> {
+        let mut params = vec![];
+
+        self.expect_next(TokenType::LeftParen)?;
+        self.next_token();
+
+        while self.has_next() && self.peek().type_.clone() != TokenType::RightParen {
+            let param = self.parse_unary()?;
+            params.push(param);
+        }
+
+        self.expect_next(TokenType::RightParen)?;
+        self.next_token();
+
+        Ok(params)
+    }
+
+
+    fn parse_lambda(&mut self) -> eyre::Result<Rc<AstNode>> {
+        self.expect_next(TokenType::LeftParen)?;
+        self.next_token();
+
+        let params = self.parse_param_list()?;
+
+        self.expect_next(TokenType::RightParen)?;
+        self.next_token();
+
+        self.expect_next(TokenType::RightArrow)?;
+        let node = AstNode::LambdaFunction { params: params, body: vec![] };
+        Ok(Rc::new(node))
+    }
 
 
     fn parse_operation(&mut self) -> eyre::Result<Rc<AstNode>> {
         let mut left = self.parse_unary()?;
 
+        // If the operation tail is part of a binary expression.
+        // ! Precedence not working, needs to be worked on
         while self.has_next() && TokenType::is_binary_operator(self.peek().as_ref()) {
-            let operator = self.next_token();
+            // Get the operator token
+            let operator_token = self.next_token();
+
+            // Ensure the operator is valid for binary expressions.
+            let operator = BinaryOperator::from(operator_token.as_ref());
+            if operator.is_none() {
+                return Err(eyre!("Expected an operator, found {}", operator_token.lexeme.to_string()));
+            }
+
+            // Parse the right hand side of the expression.
             let right = self.parse_unary()?;
-            left = Rc::new(AstNode::BinaryOperation { operator: BinaryOperator::PlusEqual, lhs: left, rhs: right })
+            left = Rc::new(AstNode::BinaryOperation { operator: operator.unwrap(), lhs: left, rhs: right })
         }
 
         Ok(left)
@@ -192,22 +301,35 @@ impl <'a> Parser <'a> {
                  => self.parse_literal(),
 
             True => {
+                self.next_token();
                 let node = Rc::new(AstNode::BooleanLiteral(true));
                 Ok(node)
             }
 
             False => {
+                self.next_token();
                 let node = Rc::new(AstNode::BooleanLiteral(false));
                 Ok(node)
             }
 
             Identifier => {
+                self.next_token();
                 let value = token.as_ref().lexeme.to_string();
                 let node = Rc::new(AstNode::Identifier(value));
                 Ok(node)
             }
 
             LeftParen => self.parse_parentheses(),
+
+            Minus => {
+                self.next_token();
+                if !self.has_next() {
+                    return Err(eyre!("Expected an expression"));
+                }
+                let expr = self.parse_unary()?;
+                let node = Rc::new(AstNode::UnaryOperation { operator: UnaryOperator::Minus, operand: expr });
+                Ok(node)
+            }
 
             _ => Err(eyre!("Unexpected token: {}", token.lexeme))
         }
@@ -225,7 +347,10 @@ impl <'a> Parser <'a> {
         let right_paren = self.peek();
 
         return match right_paren.type_ {
-            TokenType::RightParen => Ok(expr),
+            TokenType::RightParen => {
+                self.next_token();
+                Ok(expr)
+            },
             _ => Err(eyre!("Expected ')'"))
         };
     }
@@ -241,9 +366,39 @@ impl <'a> Parser <'a> {
     // }
 
 
-    // fn parse_function_definition(&mut self) -> eyre::Result<AstNode> {
+    fn parse_function_definition(&mut self) -> eyre::Result<Rc<AstNode>> {
+        self.expect_next(TokenType::Def)?;
+        self.next_token();
 
-    // }
+        self.expect_next(TokenType::Identifier)?;
+        let identifier = self.next_token().lexeme.to_string();
+
+        let params = self.parse_param_list()?;
+
+        self.expect_next(TokenType::RightArrow)?;
+        self.next_token();
+
+        self.expect_next(TokenType::Identifier)?;
+        let return_type = self.next_token().type_.clone();
+
+        let mut body = vec![];
+        while self.has_next() && self.expect_next(TokenType::EndDef).is_err() {
+            let statement = self.parse_statement()?;
+            body.push(statement);
+        }
+
+        self.expect_next(TokenType::EndDef)?;
+
+        let function = FunctionDefinition {
+            name: identifier,
+            return_type: return_type,
+            param_list: params,
+            body: body,
+        };
+
+        let node = Rc::new(AstNode::FunctionDefinition(function));
+        Ok(node)
+    }
 
 
     // fn parse_function_body(&mut self) -> eyre::Result<AstNode> {
@@ -267,7 +422,7 @@ impl <'a> Parser <'a> {
 }
 
 
-pub fn generate_ast(token_stream: &mut PieTokenStream) -> eyre::Result<Rc<AstNode>> {
+pub fn generate_ast(token_stream: &mut PieTokenStream) -> eyre::Result<Vec<Rc<AstNode>>> {
     let mut parser = Parser::new(token_stream);
     parser.parse_program()
 }

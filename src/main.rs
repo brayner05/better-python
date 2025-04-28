@@ -38,7 +38,9 @@ fn run_repl() {
         }
 
         let ast = parser_result.unwrap();
-        println!("{}", ast);
+        for stmt in &ast {
+            println!("{}", stmt.as_ref())
+        }
         line.clear();
     }
 }

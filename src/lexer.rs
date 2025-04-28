@@ -44,6 +44,7 @@ impl TokenType {
             And, Or, 
             Plus, Minus, Asterisk, AsteriskAsterisk,
             PlusEqual, MinusEqual, AsteriskEqual,
+            Modulus, ModulusEqual,
             Slash, SlashEqual, Equal,
             EqualEqual, BangEqual, Less, Greater,
             LessEqual, GreaterEqual
