@@ -82,6 +82,20 @@ impl fmt::Display for FunctionDefinition {
 }
 
 
+#[derive(Debug)]
+pub struct LambdaFunction {
+    pub params: Vec<Rc<AstNode>>, 
+    pub body: Vec<Rc<AstNode>>
+}
+
+
+impl fmt::Display for LambdaFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(λ ({:?}) ({:?}))", self.params, self.body)
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Minus, LogicalNot

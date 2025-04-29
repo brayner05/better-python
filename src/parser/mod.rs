@@ -141,7 +141,14 @@ impl <'a> Parser <'a> {
 
             // Parse the right hand side of the expression.
             let right = self.parse_unary()?;
-            left = Rc::new(AstNode::BinaryOperation { operator: operator.unwrap(), lhs: left, rhs: right })
+
+            let operation = BinaryOperation {
+                operator: operator.unwrap(),
+                left_child: left,
+                right_child: right,
+            };
+
+            left = Rc::new(AstNode::BinaryOperation(operation));
         }
 
         Ok(left)
@@ -220,8 +227,15 @@ impl <'a> Parser <'a> {
                 if !self.has_next() {
                     return Err(eyre!("Expected an expression"));
                 }
+
                 let expr = self.parse_unary()?;
-                let node = Rc::new(AstNode::UnaryOperation { operator: UnaryOperator::Minus, operand: expr });
+
+                let operation = UnaryOperation {
+                    operator: UnaryOperator::Minus,
+                    operand: expr,
+                };
+
+                let node = Rc::new(AstNode::UnaryOperation(operation));
                 Ok(node)
             }
 
