@@ -2,7 +2,7 @@ mod ast;
 
 use core::fmt;
 use std::rc::Rc;
-use color_eyre::eyre::{self, eyre};
+use color_eyre::eyre::{self, eyre, OptionExt};
 use crate::lexer::{self, CanBeEof, PieToken, PieTokenStream, PieValue, TokenType};
 use ast::*;
 
@@ -53,7 +53,8 @@ impl <'a> Parser <'a> {
             _ => {}
         }
 
-        self.parse_operation()
+        self.parse_equality()
+        // self.parse_p1_operation()
     }
 
 
@@ -124,12 +125,118 @@ impl <'a> Parser <'a> {
     }
 
 
-    fn parse_operation(&mut self) -> eyre::Result<Rc<AstNode>> {
+    fn parse_equality(&mut self) -> eyre::Result<Rc<AstNode>> {
+        let mut left = self.parse_arithmetic()?;
+
+        while self.has_next() && self.peek().type_ == TokenType::EqualEqual {
+            self.next_token();
+            let right = self.parse_arithmetic()?;
+
+            let operation = BinaryOperation {
+                operator: BinaryOperator::EqualEqual,
+                left_child: left,
+                right_child: right,
+            };
+
+            left = Rc::new(AstNode::BinaryOperation(operation));
+        }
+
+        Ok(left)
+    }
+
+
+    fn next_token_precedence(&self) -> i8 {
+        let next_token = self.peek();
+        next_token.type_.precedence_level()
+    }
+
+
+    fn parse_arithmetic(&mut self) -> eyre::Result<Rc<AstNode>> {
+        let mut left = self.parse_term()?;
+        let precedence_level = TokenType::Plus.precedence_level();
+
+        while self.has_next() && self.next_token_precedence() == precedence_level {
+            let operator_token = self.next_token();
+            let right = self.parse_term()?;
+            
+            let operator = 
+                BinaryOperator
+                    ::from(operator_token.as_ref())
+                    .ok_or_eyre(format!("Unexpected {}", operator_token.lexeme.as_str()));
+
+            let operation = BinaryOperation {
+                operator: operator?,
+                left_child: left,
+                right_child: right,
+            };
+
+            left = Rc::new(AstNode::BinaryOperation(operation));
+        }
+
+        Ok(left)
+    }
+
+
+    fn parse_term(&mut self) -> eyre::Result<Rc<AstNode>> {
+        let mut left = self.parse_exponent()?;
+        let precedence_level = TokenType::Asterisk.precedence_level();
+
+        while self.has_next() && self.next_token_precedence() == precedence_level {
+            let operator_token = self.next_token();
+            let right = self.parse_exponent()?;
+            
+            let operator = 
+                BinaryOperator
+                    ::from(operator_token.as_ref())
+                    .ok_or_eyre(format!("Unexpected {}", operator_token.lexeme.as_str()));
+
+            let operation = BinaryOperation {
+                operator: operator?,
+                left_child: left,
+                right_child: right,
+            };
+
+            left = Rc::new(AstNode::BinaryOperation(operation));
+        }
+
+        Ok(left)
+    }
+
+
+    fn parse_exponent(&mut self) -> eyre::Result<Rc<AstNode>> {
+        let mut left = self.parse_unary()?;
+        let precedence_level = TokenType::AsteriskAsterisk.precedence_level();
+
+        while self.has_next() && self.next_token_precedence() == precedence_level {
+            let operator_token = self.next_token();
+            let right = self.parse_unary()?;
+            
+            let operator = 
+                BinaryOperator
+                    ::from(operator_token.as_ref())
+                    .ok_or_eyre(format!("Unexpected {}", operator_token.lexeme.as_str()));
+
+            let operation = BinaryOperation {
+                operator: operator?,
+                left_child: left,
+                right_child: right,
+            };
+
+            left = Rc::new(AstNode::BinaryOperation(operation));
+        }
+
+        Ok(left)
+    }
+
+
+    fn parse_p1_operation(&mut self) -> eyre::Result<Rc<AstNode>> {
         let mut left = self.parse_unary()?;
 
         // If the operation tail is part of a binary expression.
         // ! Precedence not working, needs to be worked on
-        while self.has_next() && TokenType::is_binary_operator(self.peek().as_ref()) {
+        let precedence = TokenType::Plus.precedence_level();
+
+        while self.has_next() && self.peek().type_.precedence_level() == precedence {
             // Get the operator token
             let operator_token = self.next_token();
 
@@ -246,7 +353,7 @@ impl <'a> Parser <'a> {
 
     fn parse_parentheses(&mut self) -> eyre::Result<Rc<AstNode>> {
         self.next_token();
-        let expr = self.parse_operation()?;
+        let expr = self.parse_p1_operation()?;
 
         if !self.has_next() {
             return Err(eyre!("Expected ')'"));

@@ -31,6 +31,46 @@ impl fmt::Display for AstNode {
 }
 
 
+impl AstNode {
+    pub fn is_equality_operator(&self) -> bool {
+        let operation: &BinaryOperation;
+
+        match self {
+            AstNode::BinaryOperation(op) => operation = op,
+            _ => return false,
+        };
+
+        match operation.operator {
+            BinaryOperator::EqualEqual
+            | BinaryOperator::BangEqual
+            | BinaryOperator::LessEqual
+            | BinaryOperator::GreaterEqual => true,
+
+            _ => false
+        }
+    }
+
+
+    pub fn is_assignment_operator(&self) -> bool {
+        let operation: &BinaryOperation;
+
+        match self {
+            AstNode::BinaryOperation(op) => operation = op,
+            _ => return false,
+        };
+
+        match operation.operator {
+            BinaryOperator::PlusEqual
+            | BinaryOperator::MinusEqual
+            | BinaryOperator::AsteriskEqual
+            | BinaryOperator::SlashEqual
+            | BinaryOperator::ModulusEqual => true,
+
+            _ => false
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
@@ -112,8 +152,8 @@ impl fmt::Display for UnaryOperator {
 #[derive(Debug, Clone)]
 pub enum BinaryOperator {
     Plus, Minus, Asterisk, Slash,
-    PlusEqual, MinusEqual, AsteriskEqual, SlashEqual,
-    Modulus, ModulusEqual,
+    PlusEqual, MinusEqual, AsteriskEqual, Exponent,
+    SlashEqual, Modulus, ModulusEqual,
     Equal, EqualEqual, BangEqual, Less, Greater,
     LessEqual, GreaterEqual,
     Or, And
@@ -128,6 +168,7 @@ impl BinaryOperator {
             TokenType::Minus => Some(Self::Minus),
             TokenType::MinusEqual => Some(Self::MinusEqual),
             TokenType::Asterisk => Some(Self::Asterisk),
+            TokenType::AsteriskAsterisk => Some(Self::Exponent),
             TokenType::AsteriskEqual => Some(Self::AsteriskEqual),
             TokenType::Slash => Some(Self::Slash),
             TokenType::SlashEqual => Some(Self::SlashEqual),
