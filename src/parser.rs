@@ -33,6 +33,9 @@ impl fmt::Display for AstNode {
                 rhs 
             } => write!(f, "({} {}, {})", operator, lhs.as_ref(), rhs.as_ref()),
 
+            AstNode::FunctionDefinition(func) 
+                => write!(f, "(Def {} : ({:?}) -> {} [{:?}])", func.name, func.param_list, func.return_type, func.body),
+
             _ => write!(f, "{:?}", self)
         }
     }
@@ -51,6 +54,13 @@ pub struct FunctionDefinition {
     pub return_type: TokenType,
     pub param_list: Vec<Rc<AstNode>>,
     pub body: Vec<Rc<AstNode>>
+}
+
+
+impl fmt::Display for FunctionDefinition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }
 
 
