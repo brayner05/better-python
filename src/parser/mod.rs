@@ -40,7 +40,9 @@ impl <'a> Parser <'a> {
 
     fn parse_program(&mut self) -> eyre::Result<Vec<Rc<AstNode>>> {
         let mut statements = vec![];
-        statements.push(self.parse_statement()?);
+        while self.has_next() {
+            statements.push(self.parse_statement()?);
+        }
         Ok(statements)
     }
 
@@ -50,6 +52,7 @@ impl <'a> Parser <'a> {
 
         match next.type_.clone() {
             TokenType::Def => return self.parse_function_definition(),
+            TokenType::If => return self.parse_if_statement(),
             _ => {}
         }
 
@@ -403,6 +406,7 @@ impl <'a> Parser <'a> {
         }
 
         self.expect_next(TokenType::EndDef)?;
+        self.next_token();
 
         let function = FunctionDefinition {
             name: identifier,
@@ -421,9 +425,31 @@ impl <'a> Parser <'a> {
     // }
 
 
-    // fn parse_if_statement(&mut self) -> eyre::Result<AstNode> {
+    fn parse_if_statement(&mut self) -> eyre::Result<Rc<AstNode>> {
+        self.expect_next(TokenType::If)?;
+        self.next_token();
 
-    // }
+        let condition = self.parse_equality()?;
+
+        self.expect_next(TokenType::Then)?;
+        self.next_token();
+
+        let mut body = vec![];
+        
+        while self.has_next() && self.peek().type_.clone() != TokenType::EndIf {
+            body.push(self.parse_statement()?);
+        }
+
+        self.expect_next(TokenType::EndIf)?;
+        self.next_token();
+
+        let if_statement = IfStatement {
+            condition: condition,
+            body: body,
+        };
+
+        Ok(Rc::new(AstNode::IfStatement(if_statement)))
+    }
 
 
     // fn parse_for_in_loop(&mut self) -> eyre::Result<AstNode> {

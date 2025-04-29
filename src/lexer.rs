@@ -22,7 +22,7 @@ pub enum TokenType {
     Identifier,
 
     Enum, EndEnum, Struct, EndStruct, Def, EndDef,
-    If, EndIf, Else, For, Do, Done, While, Return,
+    If, Then, EndIf, Else, For, Do, Done, While, Return,
     Break, Continue,
 
     Eof
@@ -206,7 +206,7 @@ impl PieTokenStream {
 
 
     pub fn is_eof_internal(&self) -> bool {
-        self.tokens.is_empty()
+        self.tokens.is_empty() || self.tokens[0].type_ == TokenType::Eof
     }
 
 
@@ -325,6 +325,7 @@ impl KeywordLookup {
         map.insert(String::from("struct"), TokenType::Struct);
         map.insert(String::from("endstruct"), TokenType::EndStruct);
         map.insert(String::from("if"), TokenType::If);
+        map.insert(String::from("then"), TokenType::Then);
         map.insert(String::from("endif"), TokenType::EndIf);
         map.insert(String::from("else"), TokenType::Else);
         map.insert(String::from("def"), TokenType::Def);

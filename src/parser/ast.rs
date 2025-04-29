@@ -1,5 +1,5 @@
 use core::fmt;
-use std::rc::Rc;
+use std::{fmt::write, rc::Rc};
 
 use crate::lexer::{PieToken, TokenType};
 
@@ -12,7 +12,9 @@ pub enum AstNode {
     StringLiteral(String), Identifier(String),
 
     LambdaFunction { params: Vec<Rc<AstNode>>, body: Vec<Rc<AstNode>> },
-    FunctionDefinition(FunctionDefinition)
+    FunctionDefinition(FunctionDefinition),
+
+    IfStatement(IfStatement)
 }
 
 
@@ -24,6 +26,8 @@ impl fmt::Display for AstNode {
             AstNode::BinaryOperation(op) => write!(f, "{}", op),
 
             AstNode::FunctionDefinition(func) => write!(f, "{}", func),
+
+            AstNode::IfStatement(stmt) => write!(f, "{}", stmt),
 
             _ => write!(f, "{:?}", self)
         }
@@ -100,9 +104,17 @@ impl fmt::Display for BinaryOperation {
 }
 
 
-pub enum Literal {
-    Integer(i64), Float(f64), Boolean(bool),
-    String(String), Identifier(String)
+#[derive(Debug)]
+pub struct IfStatement {
+    pub condition: Rc<AstNode>,
+    pub body: Vec<Rc<AstNode>>
+}
+
+
+impl fmt::Display for IfStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(If {} ({:?}))", self.condition, self.body)
+    }
 }
 
 
