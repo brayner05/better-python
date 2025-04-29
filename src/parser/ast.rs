@@ -31,6 +31,46 @@ impl fmt::Display for AstNode {
 }
 
 
+impl AstNode {
+    pub fn is_equality_operator(&self) -> bool {
+        let operation: &BinaryOperation;
+
+        match self {
+            AstNode::BinaryOperation(op) => operation = op,
+            _ => return false,
+        };
+
+        match operation.operator {
+            BinaryOperator::EqualEqual
+            | BinaryOperator::BangEqual
+            | BinaryOperator::LessEqual
+            | BinaryOperator::GreaterEqual => true,
+
+            _ => false
+        }
+    }
+
+
+    pub fn is_assignment_operator(&self) -> bool {
+        let operation: &BinaryOperation;
+
+        match self {
+            AstNode::BinaryOperation(op) => operation = op,
+            _ => return false,
+        };
+
+        match operation.operator {
+            BinaryOperator::PlusEqual
+            | BinaryOperator::MinusEqual
+            | BinaryOperator::AsteriskEqual
+            | BinaryOperator::SlashEqual
+            | BinaryOperator::ModulusEqual => true,
+
+            _ => false
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct UnaryOperation {
     pub operator: UnaryOperator,

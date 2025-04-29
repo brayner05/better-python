@@ -50,6 +50,48 @@ impl TokenType {
             LessEqual, GreaterEqual
         ].contains(&token.type_)
     }
+
+
+    pub fn precedence_level(&self) -> i8 {
+        match self {
+            // P0 - Logical not
+            TokenType::Bang => 0,
+
+            // P1 - Equality
+            TokenType::EqualEqual
+            | TokenType::GreaterEqual
+            | TokenType::LessEqual
+            | TokenType::BangEqual
+            | TokenType::Less
+            | TokenType::Greater => 1,
+
+            // P2 - Assignment
+            TokenType::PlusEqual
+            | TokenType::SlashEqual
+            | TokenType::ModulusEqual
+            | TokenType::Equal
+            | TokenType::AsteriskEqual
+            | TokenType::MinusEqual => 2,
+
+            // P3 - Addition, Subtraction, Conjunction, Disjunction
+            TokenType::Plus
+            | TokenType::And
+            | TokenType::Or
+            | TokenType::Minus => 3,
+
+
+            // P4 - Multiplication, Division, Modulo
+            TokenType::Asterisk
+            | TokenType::Modulus
+            | TokenType::Slash => 4,
+
+            // P5 - Exponent
+            TokenType::AsteriskAsterisk => 5,
+            
+            // Anything else == invalid
+            _ => -1
+        }
+    }
 }
 
 
