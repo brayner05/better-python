@@ -45,7 +45,7 @@ impl TokenType {
             Plus, Minus, Asterisk, AsteriskAsterisk,
             PlusEqual, MinusEqual, AsteriskEqual,
             Modulus, ModulusEqual,
-            Slash, SlashEqual, Equal,
+            Slash, SlashEqual,
             EqualEqual, BangEqual, Less, Greater,
             LessEqual, GreaterEqual
         ].contains(&token.type_)
@@ -54,9 +54,6 @@ impl TokenType {
 
     pub fn precedence_level(&self) -> i8 {
         match self {
-            // P0 - Logical not
-            TokenType::Bang => 0,
-
             // P1 - Equality
             TokenType::EqualEqual
             | TokenType::GreaterEqual
@@ -64,14 +61,6 @@ impl TokenType {
             | TokenType::BangEqual
             | TokenType::Less
             | TokenType::Greater => 1,
-
-            // P2 - Assignment
-            TokenType::PlusEqual
-            | TokenType::SlashEqual
-            | TokenType::ModulusEqual
-            | TokenType::Equal
-            | TokenType::AsteriskEqual
-            | TokenType::MinusEqual => 2,
 
             // P3 - Addition, Subtraction, Conjunction, Disjunction
             TokenType::Plus
@@ -88,6 +77,9 @@ impl TokenType {
             // P5 - Exponent
             TokenType::AsteriskAsterisk => 5,
             
+            // P6 - Logical not
+            TokenType::Bang => 6,
+
             // Anything else == invalid
             _ => -1
         }

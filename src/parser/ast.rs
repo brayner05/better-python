@@ -152,8 +152,8 @@ impl fmt::Display for UnaryOperator {
 #[derive(Debug, Clone)]
 pub enum BinaryOperator {
     Plus, Minus, Asterisk, Slash,
-    PlusEqual, MinusEqual, AsteriskEqual, SlashEqual,
-    Modulus, ModulusEqual,
+    PlusEqual, MinusEqual, AsteriskEqual, Exponent,
+    SlashEqual, Modulus, ModulusEqual,
     Equal, EqualEqual, BangEqual, Less, Greater,
     LessEqual, GreaterEqual,
     Or, And
@@ -168,6 +168,7 @@ impl BinaryOperator {
             TokenType::Minus => Some(Self::Minus),
             TokenType::MinusEqual => Some(Self::MinusEqual),
             TokenType::Asterisk => Some(Self::Asterisk),
+            TokenType::AsteriskAsterisk => Some(Self::Exponent),
             TokenType::AsteriskEqual => Some(Self::AsteriskEqual),
             TokenType::Slash => Some(Self::Slash),
             TokenType::SlashEqual => Some(Self::SlashEqual),
