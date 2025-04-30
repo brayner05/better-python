@@ -15,7 +15,8 @@ pub enum AstNode {
     LambdaFunction { params: Vec<Rc<AstNode>>, body: Vec<Rc<AstNode>> },
     FunctionDefinition(FunctionDefinition),
 
-    IfStatement(IfStatement)
+    IfStatement(IfStatement),
+    ReturnStatement(ReturnStatement)
 }
 
 
@@ -221,5 +222,18 @@ impl BinaryOperator {
 impl fmt::Display for BinaryOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+
+#[derive(Debug)]
+pub struct ReturnStatement {
+    pub body: Rc<AstNode>
+}
+
+
+impl fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(Return {})", self.body)
     }
 }

@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::{fs::{self, File}, io::{self, Read, Write}};
 use color_eyre::*;
 
 mod lexer;
@@ -56,6 +56,22 @@ fn run_repl() {
 }
 
 
+fn run_file(file: &mut File) -> eyre::Result<()> {
+    let mut source = String::new();
+    file.read_to_string(&mut source)?;
+
+    let mut tokens = lexer::scan_all_tokens(&source)?;
+    let ast = parser::generate_ast(&mut tokens)?;
+    
+    for file_level_stmt in &ast {
+        let translation = transpiler::generate_python(file_level_stmt.clone())?;
+        println!("{}", translation);
+    }
+
+    Ok(())
+}
+
+
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
@@ -63,6 +79,15 @@ fn main() -> eyre::Result<()> {
     if arguments.len() < 2 {
         run_repl();
         return Ok(());
+    }
+
+    let source_path = arguments[1].clone();
+    let mut source_file = fs::File::open(source_path)?;
+
+    let result = run_file(&mut source_file);
+
+    if let Err(e) = &result {
+        eprintln!("{}", &result.unwrap_err());
     }
     
     Ok(())

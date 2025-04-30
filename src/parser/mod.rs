@@ -310,6 +310,19 @@ impl <'a> Parser <'a> {
                 Ok(node)
             }
 
+            Return => {
+                self.next_token();
+                if !self.has_next() {
+                    return Err(eyre!("Expected an expression"));
+                }
+
+                let expr = ReturnStatement { 
+                    body: self.parse_equality()?
+                };
+
+                Ok(Rc::new(AstNode::ReturnStatement(expr)))
+            }
+
             Identifier => {
                 self.next_token();
                 let value = token.as_ref().lexeme.to_string();

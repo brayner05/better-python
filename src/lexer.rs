@@ -545,9 +545,11 @@ impl <'a> Lexer <'a> {
 
             '}' => self.add_token(TokenType::RightBrace, None),
 
-            '_' => self.add_token(TokenType::Underscore, None),
+            // '_' => self.add_token(TokenType::Underscore, None),
 
             ':' => self.add_token(TokenType::Colon, None),
+
+            '_' => self.scan_keyword(),
 
             alpha if alpha.is_alphabetic() => self.scan_keyword(),
 
@@ -607,7 +609,7 @@ impl <'a> Lexer <'a> {
 
 
     fn scan_keyword(&mut self) {
-        while self.has_next() && self.peek().unwrap().is_alphanumeric() {
+        while self.has_next() && (self.peek().unwrap().is_alphanumeric() || self.peek().unwrap() == '_') {
             self.next();
         }
 

@@ -1,6 +1,16 @@
-def even(n) -> n
-    if n % 2 == 0 then
-        1
+
+def factorial(n) -> int
+    if n == 0 then
+        return 1
     endif
-    0
+    return n * factorial(n - 1)
 enddef
+
+
+if __name__ == "__main__" then
+    print(factorial(1))
+    print(factorial(2))
+    print(factorial(3))
+    print(factorial(4))
+    print(factorial(5))
+endif

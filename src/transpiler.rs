@@ -7,30 +7,27 @@ use crate::parser::ast::{AstNode, BinaryOperator, UnaryOperator};
 pub fn generate_python(program: Rc<AstNode>) -> eyre::Result<String> {
     match program.as_ref() {
         AstNode::UnaryOperation(unary_operation) => {
-            let operand = generate_python(unary_operation.operand.clone())?;
-            let operator = transpile_unary_operator(&unary_operation.operator);
-            return Ok(format!("{}{}", String::from(operator), operand));
-        },
-
+                        let operand = generate_python(unary_operation.operand.clone())?;
+                        let operator = transpile_unary_operator(&unary_operation.operator);
+                        return Ok(format!("{}{}", String::from(operator), operand));
+            },
         AstNode::BinaryOperation(binary_operation) => {
-            let operator = transpile_binary_operator(&binary_operation.operator);
-            let left = generate_python(binary_operation.left_child.clone())?;
-            let right = generate_python(binary_operation.right_child.clone())?;
-            return Ok(format!("{} {} {}", left, operator, right));
-        },
-
+                let operator = transpile_binary_operator(&binary_operation.operator);
+                let left = generate_python(binary_operation.left_child.clone())?;
+                let right = generate_python(binary_operation.right_child.clone())?;
+                return Ok(format!("{} {} {}", left, operator, right));
+            },
         AstNode::FunctionCall(function_call) => {
-            let name = &function_call.function;
+                let name = &function_call.function;
 
-            let args = function_call.args
-                        .iter()
-                        .map(|arg| generate_python(arg.clone()))
-                        .collect::<eyre::Result<Vec<String>, _>>()?
-                        .join(", ");
+                let args = function_call.args
+                            .iter()
+                            .map(|arg| generate_python(arg.clone()))
+                            .collect::<eyre::Result<Vec<String>, _>>()?
+                            .join(", ");
 
-            return Ok(format!("{}({})", name, args));
-        },
-
+                return Ok(format!("{}({})", name, args));
+            },
         AstNode::IntegerLiteral(x) => return Ok(x.to_string()),
 
         AstNode::FloatLiteral(x) => return Ok(x.to_string()),
@@ -44,35 +41,40 @@ pub fn generate_python(program: Rc<AstNode>) -> eyre::Result<String> {
         AstNode::LambdaFunction { params, body } => todo!(),
 
         AstNode::FunctionDefinition(function) => {
-            let name = function.name.clone();
+                let name = function.name.clone();
 
-            let params = function.param_list
-                        .iter()
-                        .map(|param| generate_python(param.clone()))
-                        .collect::<eyre::Result<Vec<String>>>()?
-                        .join(", ");
+                let params = function.param_list
+                            .iter()
+                            .map(|param| generate_python(param.clone()))
+                            .collect::<eyre::Result<Vec<String>>>()?
+                            .join(", ");
 
-            let body = function.body
-                        .iter()
-                        .map(|statement| generate_python(statement.clone()))
-                        .collect::<eyre::Result<Vec<String>>>()?
-                        .join("\n\t");
+                let body = function.body
+                            .iter()
+                            .map(|statement| generate_python(statement.clone()))
+                            .collect::<eyre::Result<Vec<String>>>()?
+                            .join("\n\t");
 
-            let return_type = function.return_type.clone();
+                let return_type = function.return_type.clone();
 
-            return Ok(format!("def {}({}):\n\t{}", name, params, body));
-        },
+                return Ok(format!("def {}({}):\n\t{}", name, params, body));
+            },
 
         AstNode::IfStatement(if_statement) => {
-            let condition = if_statement.condition.clone();
+                let condition = generate_python(if_statement.condition.clone())?;
 
-            let body = if_statement.body
-                        .iter()
-                        .map(|statement| generate_python(statement.clone()))
-                        .collect::<eyre::Result<Vec<String>>>()?
-                        .join("\n\t");
+                let body = if_statement.body
+                            .iter()
+                            .map(|statement| generate_python(statement.clone()))
+                            .collect::<eyre::Result<Vec<String>>>()?
+                            .join("\n\t");
 
-            return Ok(format!("if {}:\n\t{}", condition, body));
+                return Ok(format!("if {}:\n\t{}", condition, body));
+            },
+
+        AstNode::ReturnStatement(return_statement) => {
+            let value = generate_python(return_statement.body.clone())?;
+            return Ok(format!("return {}", value));
         },
     }
 }
