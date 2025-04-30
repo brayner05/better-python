@@ -1,15 +1,13 @@
 mod ast;
 
-use core::fmt;
 use std::rc::Rc;
 use color_eyre::eyre::{self, eyre, OptionExt};
-use crate::lexer::{self, CanBeEof, PieToken, PieTokenStream, PieValue, TokenType};
+use crate::lexer::{CanBeEof, PieToken, PieTokenStream, PieValue, TokenType};
 use ast::*;
 
 
 struct Parser <'a> {
     token_stream: &'a mut PieTokenStream,
-    position: usize
 }
 
 
@@ -17,7 +15,6 @@ impl <'a> Parser <'a> {
     pub fn new(token_stream: &'a mut PieTokenStream) -> Self {
         Self {
             token_stream: token_stream,
-            position: 0
         }
     }
 
@@ -232,39 +229,6 @@ impl <'a> Parser <'a> {
     }
 
 
-    fn parse_p1_operation(&mut self) -> eyre::Result<Rc<AstNode>> {
-        let mut left = self.parse_unary()?;
-
-        // If the operation tail is part of a binary expression.
-        // ! Precedence not working, needs to be worked on
-        let precedence = TokenType::Plus.precedence_level();
-
-        while self.has_next() && self.peek().type_.precedence_level() == precedence {
-            // Get the operator token
-            let operator_token = self.next_token();
-
-            // Ensure the operator is valid for binary expressions.
-            let operator = BinaryOperator::from(operator_token.as_ref());
-            if operator.is_none() {
-                return Err(eyre!("Expected an operator, found {}", operator_token.lexeme.to_string()));
-            }
-
-            // Parse the right hand side of the expression.
-            let right = self.parse_unary()?;
-
-            let operation = BinaryOperation {
-                operator: operator.unwrap(),
-                left_child: left,
-                right_child: right,
-            };
-
-            left = Rc::new(AstNode::BinaryOperation(operation));
-        }
-
-        Ok(left)
-    }
-
-
     fn parse_literal(&mut self) -> eyre::Result<Rc<AstNode>> {
         let token = self.next_token().clone();
 
@@ -298,6 +262,24 @@ impl <'a> Parser <'a> {
     }
 
 
+    fn parse_argument_list(&mut self) -> eyre::Result<Vec<Rc<AstNode>>> {
+        let mut args = vec![];
+
+        if self.has_next() && self.peek().type_ == TokenType::RightParen {
+            return Ok(vec![]);
+        }
+
+        args.push(self.parse_equality()?);
+
+        while self.has_next() && self.peek().type_ == TokenType::Comma {
+            self.next_token();
+            args.push(self.parse_equality()?);
+        }
+
+        Ok(args)
+    }
+
+
     fn parse_unary(&mut self) -> eyre::Result<Rc<AstNode>> {
         use TokenType::*;
 
@@ -326,6 +308,27 @@ impl <'a> Parser <'a> {
             Identifier => {
                 self.next_token();
                 let value = token.as_ref().lexeme.to_string();
+
+                if self.peek().type_ == LeftParen {
+                    self.next_token();
+                    
+                    // Parse the arguments to the function
+                    let args = self.parse_argument_list()?;
+
+                    // Skip the trailing ')'
+                    self.expect_next(RightParen)?;
+                    self.next_token();
+
+                    let call = FunctionCall {
+                        function: value,
+                        args: args
+                    };
+
+                    let node = Rc::new(AstNode::FunctionCall(call));
+                    return Ok(node);
+                }
+                
+
                 let node = Rc::new(AstNode::Identifier(value));
                 Ok(node)
             }
@@ -356,7 +359,7 @@ impl <'a> Parser <'a> {
 
     fn parse_parentheses(&mut self) -> eyre::Result<Rc<AstNode>> {
         self.next_token();
-        let expr = self.parse_p1_operation()?;
+        let expr = self.parse_equality()?;
 
         if !self.has_next() {
             return Err(eyre!("Expected ')'"));

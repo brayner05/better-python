@@ -7,6 +7,7 @@ use crate::lexer::{PieToken, TokenType};
 pub enum AstNode {
     UnaryOperation(UnaryOperation),
     BinaryOperation(BinaryOperation),
+    FunctionCall(FunctionCall),
 
     IntegerLiteral(i64), FloatLiteral(f64), BooleanLiteral(bool),
     StringLiteral(String), Identifier(String),
@@ -21,13 +22,15 @@ pub enum AstNode {
 impl fmt::Display for AstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AstNode::UnaryOperation(op) => write!(f, "{}", op),
+            Self::UnaryOperation(op) => write!(f, "{}", op),
 
-            AstNode::BinaryOperation(op) => write!(f, "{}", op),
+            Self::BinaryOperation(op) => write!(f, "{}", op),
+            
+            Self::FunctionDefinition(func) => write!(f, "{}", func),
 
-            AstNode::FunctionDefinition(func) => write!(f, "{}", func),
+            Self::IfStatement(stmt) => write!(f, "{}", stmt),
 
-            AstNode::IfStatement(stmt) => write!(f, "{}", stmt),
+            Self::FunctionCall(func) => write!(f, "{}", func),
 
             _ => write!(f, "{:?}", self)
         }
@@ -130,6 +133,20 @@ pub struct FunctionDefinition {
 impl fmt::Display for FunctionDefinition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "(Def {} ({:?}) ({:?})", self.name, self.param_list, self.body)
+    }
+}
+
+
+#[derive(Debug)]
+pub struct FunctionCall {
+    pub function: String,
+    pub args: Vec<Rc<AstNode>>
+}
+
+
+impl fmt::Display for FunctionCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(Call {} ({:?}))", self.function.as_str(), &self.args)
     }
 }
 
