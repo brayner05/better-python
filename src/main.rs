@@ -3,6 +3,7 @@ use color_eyre::*;
 
 mod lexer;
 mod parser;
+mod transpiler;
 
 ///
 /// Continouously reads lines from the user until the specified exit command
@@ -38,9 +39,18 @@ fn run_repl() {
         }
 
         let ast = parser_result.unwrap();
-        for stmt in &ast {
-            println!("{}", stmt.as_ref())
+        // for stmt in &ast {
+        //     println!("{}", stmt.as_ref())
+        // }
+
+        for statement in &ast {
+            let output = transpiler::generate_python(statement.clone());
+            if let Err(e) = &output {
+                eprintln!("{}", e);
+            }
+            println!("{}", output.unwrap());
         }
+
         line.clear();
     }
 }

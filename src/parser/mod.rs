@@ -1,4 +1,4 @@
-mod ast;
+pub mod ast;
 
 use std::rc::Rc;
 use color_eyre::eyre::{self, eyre, OptionExt};
@@ -93,20 +93,25 @@ impl <'a> Parser <'a> {
 
 
     fn parse_param_list(&mut self) -> eyre::Result<Vec<Rc<AstNode>>> {
-        let mut params = vec![];
+        let mut args = vec![];
 
-        self.expect_next(TokenType::LeftParen)?;
-        self.next_token();
-
-        while self.has_next() && self.peek().type_.clone() != TokenType::RightParen {
-            let param = self.parse_unary()?;
-            params.push(param);
+        if self.has_next() && self.peek().type_ == TokenType::RightParen {
+            return Ok(vec![]);
         }
 
-        self.expect_next(TokenType::RightParen)?;
-        self.next_token();
+        args.push(self.parse_equality()?);
 
-        Ok(params)
+        while self.has_next() && self.peek().type_ == TokenType::Comma {
+            self.next_token();
+
+            if self.has_next() && self.peek().type_ != TokenType::Identifier {
+                return Err(eyre!("Expected an identifier."));
+            }
+
+            args.push(self.parse_unary()?);
+        }
+
+        Ok(args)
     }
 
 
@@ -394,7 +399,13 @@ impl <'a> Parser <'a> {
         self.expect_next(TokenType::Identifier)?;
         let identifier = self.next_token().lexeme.to_string();
 
+        self.expect_next(TokenType::LeftParen)?;
+        self.next_token();
+
         let params = self.parse_param_list()?;
+
+        self.expect_next(TokenType::RightParen)?;
+        self.next_token();
 
         self.expect_next(TokenType::RightArrow)?;
         self.next_token();
