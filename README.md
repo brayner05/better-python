@@ -1,6 +1,9 @@
 # 🐍 Nadra - Modern Scripting Language 🐍
 
 **DISCLAIMER: Nadra is currently in early development and thus could contain bugs.**
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues)
+
+
 
 ## What is Nadra? ❓
 Nadra is intended to be an alternative syntax to Python 3, to which it is transpiled. The name *Nadra* comes from the Old Norse word 'naðra' */'naðra/* which means 'snake'. Nadra is for anyone who often uses Python but is not a fan of indentation being used to mark code blocks, or is just not fond of the Python syntax.
