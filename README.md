@@ -1,8 +1,8 @@
 # 🐍 Nadra - Modern Scripting Language 🐍
 
-**DISCLAIMER: Nadra is currently in early development and thus could contain bugs.**
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues)
 
+**DISCLAIMER: Nadra is currently in early development and thus could contain bugs.**
 
 
 ## What is Nadra? ❓
