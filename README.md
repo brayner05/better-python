@@ -2,13 +2,13 @@
 
 **DISCLAIMER: Nadra is currently in early development and thus could contain bugs.**
 
-## What is Nadra?
+## What is Nadra? ❓
 Nadra is intended to be an alternative syntax to Python 3, to which it is transpiled. The name *Nadra* comes from the Old Norse word 'naðra' */'naðra/* which means 'snake'. Nadra is for anyone who often uses Python but is not a fan of indentation being used to mark code blocks, or is just not fond of the Python syntax.
 
-## What Nadra is Not
+## What Nadra is Not 🚫
 Nadra is not intented to be a replacement for Python. Python is a very useful language used in a variety of fields, while Nadra is just an alternative syntax for Python, which in turn gets transpiled into Python.
 
-## Hello, World!
+## Hello, World! 👋🌎
 Writing a 'Hello, World!' program in Nadra is pretty simple. In fact, the most basic way of implementing 'Hello, World!' in Nadra is identical to Python.
 
 ```nadra
@@ -23,7 +23,7 @@ if __name__ == "__main__" then
 endif
 ```
 
-## Installation
+## Installation 📥
 To install Nadra, you will need a few things on your system.
 - Cargo - used to build Nadra
 - Python 3 - Used to run the outputted Python code created by the transpiler.
@@ -44,7 +44,7 @@ cargo build --release
 From here, you can begin writing Nadra code.
 
 
-## The Transpiler
+## The Transpiler 🔑
 Nadra does not currently run on it's own, but rather any Nadra code gets transpiled (converted) to Python code, which can then be run via whichever Python environment you wish.
 
 ### How to invoke the transpiler
@@ -72,7 +72,7 @@ python3 main.py
 It is often helpful to simplify this build system. To do so, a variety of tools can be used. *GNU Make* is one such tool.
 
 
-## The Basics
+## The Basics 👶
 Now that Nadra is installed, and we know how to compile our code, let us go over some of the basic features of Nadra.
 
 ### Functions
@@ -173,7 +173,7 @@ One of the upcoming features of Nadra is it's lambda expressions. Nadra's lambda
 numbers.map((n) -> n ** 2)
 ```
 
-## Contribution
+## Contribution 🤝
 It is my intention to make Nadra free, open-source, and accept contributions to the project.
 
 As of now, Nadra is still in the early stages of development, so while contributions are welcome, they are not the main priority of the project as of now. 
@@ -181,7 +181,7 @@ As of now, Nadra is still in the early stages of development, so while contribut
 Once Nadra is ready for release, contributions will remain welcome and appreciated.
 
 
-## Nadra Wishlist
+## Nadra Wishlist ❤️
 The following are some features that are being considered for Nadra, some of which are already in development.
 
 | Feature | State | Description |
