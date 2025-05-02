@@ -397,7 +397,24 @@ impl <'a> Parser <'a> {
 
                 let node = Rc::new(AstNode::UnaryOperation(operation));
                 Ok(node)
-            }
+            },
+
+            Bang => {
+                self.next_token();
+                if !self.has_next() {
+                    return Err(eyre!("Expected an expression"));
+                }
+
+                let expr = self.parse_unary()?;
+
+                let operation = UnaryOperation {
+                    operator: UnaryOperator::LogicalNot,
+                    operand: expr,
+                };
+
+                let node = Rc::new(AstNode::UnaryOperation(operation));
+                Ok(node)
+            },
 
             _ => Err(eyre!("Unexpected token: {}", token.lexeme))
         }
