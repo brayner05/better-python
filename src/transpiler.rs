@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{fmt::format, rc::Rc};
 
-use color_eyre::eyre::{self, Ok};
+use color_eyre::{eyre::{self, Ok}, owo_colors::OwoColorize};
 
 use crate::parser::ast::{AstNode, BinaryOperation, BinaryOperator, FunctionCall, FunctionDefinition, IfStatement, ReturnStatement, UnaryOperation, UnaryOperator, WhileLoop};
 
@@ -120,7 +120,7 @@ pub fn generate_python(program: Rc<AstNode>) -> eyre::Result<String> {
 fn transpile_unary_operator(operator: &UnaryOperator) -> &'static str {
     match operator {
         UnaryOperator::Minus => "-",
-        UnaryOperator::LogicalNot => "not ",
+        UnaryOperator::LogicalNot => "not",
     }
 }
 
