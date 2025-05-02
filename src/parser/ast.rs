@@ -16,7 +16,8 @@ pub enum AstNode {
     FunctionDefinition(FunctionDefinition),
 
     IfStatement(IfStatement),
-    ReturnStatement(ReturnStatement)
+    ReturnStatement(ReturnStatement),
+    WhileLoop(WhileLoop)
 }
 
 
@@ -78,6 +79,21 @@ impl AstNode {
         }
     }
 }
+
+
+#[derive(Debug)]
+pub struct WhileLoop {
+    pub condition: Rc<AstNode>,
+    pub body: Vec<Rc<AstNode>>
+}
+
+
+impl fmt::Display for WhileLoop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(If {} ({:?}))", self.condition, self.body)
+    }
+}
+
 
 #[derive(Debug)]
 pub struct UnaryOperation {

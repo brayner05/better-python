@@ -50,6 +50,7 @@ impl <'a> Parser <'a> {
         match next.type_.clone() {
             TokenType::Def => return self.parse_function_definition(),
             TokenType::If => return self.parse_if_statement(),
+            TokenType::While => return self.parse_while_loop(),
             _ => {}
         }
 
@@ -89,6 +90,34 @@ impl <'a> Parser <'a> {
         }
 
         Ok(())
+    }
+
+
+    fn parse_while_loop(&mut self) -> eyre::Result<Rc<AstNode>> {
+        self.expect_next(TokenType::While)?;
+        self.next_token();
+
+        let condition = self.parse_equality()?;
+
+        self.expect_next(TokenType::Do)?;
+        self.next_token();
+
+        let mut body = vec![];
+
+        while self.has_next() && self.peek().type_.clone() != TokenType::Done {
+            body.push(self.parse_statement()?);
+        }
+
+        self.expect_next(TokenType::Done)?;
+        self.next_token();
+
+        let while_loop = WhileLoop {
+            condition: condition,
+            body: body,
+        };
+
+        let node = Rc::new(AstNode::WhileLoop(while_loop));
+        Ok(node)
     }
 
 
