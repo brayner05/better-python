@@ -117,7 +117,7 @@ else
 endif
 ```
 
-**As of now, Nadra does not support looping. This is temporary, as loops are one of the main features in development. Nadra will feature two main types of loops:**
+**As of now, Nadra only supports while loops but in the future, the following will be supported:**
 
 #### For In
 The first kind of loop supported by Nadra is the 'for in' loop.
