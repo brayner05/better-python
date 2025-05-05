@@ -17,6 +17,8 @@ pub enum TokenType {
     Dot, DotDot, Comma, LeftParen, RightParen, LeftBracket, RightBracket,
     LeftBrace, RightBrace, Underscore, Colon, ScopeOperator, RightArrow,
 
+    TypeAlias,
+
     Float, Integer, True, False,
     String, FormatString,
     Identifier,
@@ -37,21 +39,6 @@ impl fmt::Display for TokenType {
 
 
 impl TokenType {
-    pub fn is_binary_operator(token: &PieToken) -> bool {
-        use TokenType::*;
-
-        vec![
-            And, Or, 
-            Plus, Minus, Asterisk, AsteriskAsterisk,
-            PlusEqual, MinusEqual, AsteriskEqual,
-            Modulus, ModulusEqual,
-            Slash, SlashEqual,
-            EqualEqual, BangEqual, Less, Greater,
-            LessEqual, GreaterEqual
-        ].contains(&token.type_)
-    }
-
-
     pub fn precedence_level(&self) -> i8 {
         match self {
             // P1 - Equality
@@ -339,6 +326,7 @@ impl KeywordLookup {
         map.insert(String::from("return"), TokenType::Return);
         map.insert(String::from("break"), TokenType::Break);
         map.insert(String::from("continue"), TokenType::Continue);
+        map.insert(String::from("type"), TokenType::TypeAlias);
 
         Self { keyword_tokens: map }
     }

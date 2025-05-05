@@ -44,7 +44,7 @@ fn run_repl() {
         // }
 
         for statement in &ast {
-            let output = transpiler::generate_python(statement.clone());
+            let output = transpiler::transpile(statement.clone());
             if let Err(e) = &output {
                 eprintln!("{}", e);
             }
@@ -64,7 +64,7 @@ fn run_file(file: &mut File) -> eyre::Result<()> {
     let ast = parser::generate_ast(&mut tokens)?;
     
     for file_level_stmt in &ast {
-        let translation = transpiler::generate_python(file_level_stmt.clone())?;
+        let translation = transpiler::transpile(file_level_stmt.clone())?;
         println!("{}", translation);
     }
 

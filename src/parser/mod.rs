@@ -49,6 +49,7 @@ impl <'a> Parser <'a> {
 
         match next.type_.clone() {
             TokenType::Def => return self.parse_function_definition(),
+            TokenType::TypeAlias => {},
             TokenType::If => return self.parse_if_statement(),
             TokenType::While => return self.parse_while_loop(),
             _ => {}

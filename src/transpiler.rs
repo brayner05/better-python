@@ -1,151 +1,206 @@
-use std::{fmt::format, rc::Rc};
-
-use color_eyre::{eyre::{self, Ok}, owo_colors::OwoColorize};
-
-use crate::parser::ast::{AstNode, BinaryOperation, BinaryOperator, FunctionCall, FunctionDefinition, IfStatement, ReturnStatement, UnaryOperation, UnaryOperator, WhileLoop};
+use std::rc::Rc;
+use color_eyre::eyre::{self, Ok};
+use crate::parser::ast::*;
 
 
-fn transpile_unary_operation(operation: &UnaryOperation) -> eyre::Result<String> {
-    let operand = generate_python(operation.operand.clone())?;
-    let operator = transpile_unary_operator(&operation.operator);
-    return Ok(format!("{}{}", String::from(operator), operand));
+struct Transpiler {
+    indent: u16
 }
 
 
-fn transpile_binary_operation(operation: &BinaryOperation) -> eyre::Result<String> {
-    let operator = transpile_binary_operator(&operation.operator);
-    let left = generate_python(operation.left_child.clone())?;
-    let right = generate_python(operation.right_child.clone())?;
-    return Ok(format!("{} {} {}", left, operator, right));
-}
+impl Transpiler {
+    pub fn new() -> Self {
+        Self {
+            indent: 0
+        }
+    }
 
 
-fn transpile_function_call(call: &FunctionCall) -> eyre::Result<String> {
-    let name = &call.function;
-
-    let args = call.args
-            .iter()
-            .map(|arg| generate_python(arg.clone()))
-            .collect::<eyre::Result<Vec<String>, _>>()?
-            .join(", ");
-
-    return Ok(format!("{}({})", name, args));
-}
+    fn indent_code(&self) -> String {
+        "\t".repeat(self.indent as usize)
+    }
 
 
-fn transpile_function_definition(function: &FunctionDefinition) -> eyre::Result<String> {
-    let name = function.name.clone();
-
-    let params = function.param_list
-            .iter()
-            .map(|param| generate_python(param.clone()))
-            .collect::<eyre::Result<Vec<String>>>()?
-            .join(", ");
-
-    let body = function.body
-            .iter()
-            .map(|statement| generate_python(statement.clone()))
-            .collect::<eyre::Result<Vec<String>>>()?
-            .join("\n\t");
-
-    let return_type = function.return_type.clone();
-
-    return Ok(format!("def {}({}):\n\t{}", name, params, body));
-}
+    fn transpile_unary_operation(&mut self, operation: &UnaryOperation) -> eyre::Result<String> {
+        let operand = self.generate_python(operation.operand.clone())?;
+        let operator = self.transpile_unary_operator(&operation.operator);
+        return Ok(format!("{}{}", String::from(operator), operand));
+    }
 
 
-fn transpile_if_statement(statement: &IfStatement) -> eyre::Result<String> {
-    let condition = generate_python(statement.condition.clone())?;
-
-    let body = statement.body
-            .iter()
-            .map(|statement| generate_python(statement.clone()))
-            .collect::<eyre::Result<Vec<String>>>()?
-            .join("\n\t");
-
-    return Ok(format!("if {}:\n\t{}", condition, body));
-}
+    fn transpile_binary_operation(&mut self, operation: &BinaryOperation) -> eyre::Result<String> {
+        let operator = self.transpile_binary_operator(&operation.operator);
+        let left = self.generate_python(operation.left_child.clone())?;
+        let right = self.generate_python(operation.right_child.clone())?;
+        return Ok(format!("{} {} {}", left, operator, right));
+    }
 
 
-fn transpile_return_statement(statement: &ReturnStatement) -> eyre::Result<String> {
-    let value = generate_python(statement.body.clone())?;
-    return Ok(format!("return {}", value));
-}
+    fn transpile_function_call(&mut self, call: &FunctionCall) -> eyre::Result<String> {
+        let name = &call.function;
+
+        let args = call.args
+                .iter()
+                .map(|arg| self.generate_python(arg.clone()))
+                .collect::<eyre::Result<Vec<String>, _>>()?
+                .join(", ");
+
+        return Ok(format!("{}({})", name, args));
+    }
 
 
-fn transpile_while_loop(while_loop: &WhileLoop) -> eyre::Result<String> {
-    let condition = generate_python(while_loop.condition.clone())?;
-
-    let body = while_loop.body
-            .iter()
-            .map(|statement| generate_python(statement.clone()))
-            .collect::<eyre::Result<Vec<String>>>()?
-            .join("\n\t");
-
-    return Ok(format!("while {}:\n\t{}", condition, body));
-}
+    fn transpile_block(&mut self, block: &Vec<Rc<AstNode>>) -> eyre::Result<String> {
+        block.iter()
+        .map(|stmt| {
+            let line = self.generate_python(stmt.clone())?;
+            Ok(format!("{}{}\n", self.indent_code(), line))
+        })
+        .collect::<eyre::Result<String>>()
+    }
 
 
-pub fn generate_python(program: Rc<AstNode>) -> eyre::Result<String> {
-    match program.as_ref() {
-        AstNode::UnaryOperation(operation) => transpile_unary_operation(operation),
+    fn transpile_function_definition(&mut self, function: &FunctionDefinition) -> eyre::Result<String> {
+        let name = function.name.clone();
 
-        AstNode::BinaryOperation(operation) => transpile_binary_operation(operation),
+        let params = function.param_list
+                .iter()
+                .map(|param| self.generate_python(param.clone()))
+                .collect::<eyre::Result<Vec<String>>>()?
+                .join(", ");
 
-        AstNode::FunctionCall(call) => transpile_function_call(call),
+        self.increase_indent();
+        let body = self.transpile_block(&function.body)?;
+        self.decrease_indent();
 
-        AstNode::IntegerLiteral(x) => return Ok(x.to_string()),
+        // let return_type = function.return_type.clone();
+        let return_type = "";
 
-        AstNode::FloatLiteral(x) => return Ok(x.to_string()),
+        return Ok(format!("def {}({}):\n{}", name, params, body));
+    }
 
-        AstNode::BooleanLiteral(x) => return Ok(x.to_string()),
 
-        AstNode::StringLiteral(x) =>return Ok(format!("\"{}\"", x)),
+    fn transpile_if_statement(&mut self, statement: &IfStatement) -> eyre::Result<String> {
+        let condition = self.generate_python(statement.condition.clone())?;
 
-        AstNode::Identifier(x) => return Ok(x.to_string()),
+        self.increase_indent();
+        let body = self.transpile_block(&statement.body)?;
+        self.decrease_indent();
 
-        AstNode::LambdaFunction { params, body } => todo!(),
+        return Ok(format!("if {}:\n{}", condition, body));
+    }
 
-        AstNode::FunctionDefinition(function) => transpile_function_definition(function),
 
-        AstNode::IfStatement(statement) => transpile_if_statement(statement),
+    fn transpile_return_statement(&mut self, statement: &ReturnStatement) -> eyre::Result<String> {
+        let value = self.generate_python(statement.body.clone())?;
+        return Ok(format!("return {}", value));
+    }
 
-        AstNode::ReturnStatement(statement) => transpile_return_statement(statement),
-        
-        AstNode::WhileLoop(while_loop) => transpile_while_loop(while_loop),
+
+    fn transpile_while_loop(&mut self, while_loop: &WhileLoop) -> eyre::Result<String> {
+        let condition = self.generate_python(while_loop.condition.clone())?;
+
+        self.increase_indent();
+
+        let body = while_loop.body
+                .iter()
+                .map(|statement| self.generate_python(statement.clone()))
+                .collect::<eyre::Result<Vec<String>>>()?
+                .join(&format!("\n"));
+
+        self.decrease_indent();
+
+        return Ok(format!("while {}:\n{}", condition, body));
+    }
+
+
+    fn increase_indent(&mut self) -> u16 {
+        self.indent += 1;
+        self.indent
+    }
+
+
+    fn decrease_indent(&mut self) -> u16 {
+        self.indent = 0.max(self.indent - 1);
+        self.indent
+    }
+
+
+    pub fn generate_python(&mut self, program: Rc<AstNode>) -> eyre::Result<String> {
+        let python_code = match program.as_ref() {
+            AstNode::UnaryOperation(operation) 
+                => self.transpile_unary_operation(operation)?,
+
+            AstNode::BinaryOperation(operation) 
+                => self.transpile_binary_operation(operation)?,
+
+            AstNode::FunctionCall(call) 
+                => self.transpile_function_call(call)?,
+
+            AstNode::IntegerLiteral(x) => x.to_string(),
+
+            AstNode::FloatLiteral(x) => x.to_string(),
+
+            AstNode::BooleanLiteral(x) => String::from(if *x { "True" } else { "False" }),
+
+            AstNode::StringLiteral(x) => format!("\"{}\"", x),
+
+            AstNode::Identifier(x) => x.to_string(),
+
+            AstNode::LambdaFunction { params, body } => todo!(),
+
+            AstNode::FunctionDefinition(function)
+                => self.transpile_function_definition(function)?,
+
+            AstNode::IfStatement(statement) 
+                => self.transpile_if_statement(statement)?,
+
+            AstNode::ReturnStatement(statement)
+                => self.transpile_return_statement(statement)?,
+            
+            AstNode::WhileLoop(while_loop) 
+                => self.transpile_while_loop(while_loop)?,
+        };
+
+        Ok(python_code)
+    }
+
+
+    fn transpile_unary_operator(&self, operator: &UnaryOperator) -> &'static str {
+        match operator {
+            UnaryOperator::Minus => "-",
+            UnaryOperator::LogicalNot => "not",
+        }
+    }
+
+
+    fn transpile_binary_operator(&self, operator: &BinaryOperator) -> &'static str {
+        match operator {
+            BinaryOperator::Plus => "+",
+            BinaryOperator::Minus => "-",
+            BinaryOperator::Asterisk => "*",
+            BinaryOperator::Slash => "/",
+            BinaryOperator::PlusEqual => "+=",
+            BinaryOperator::MinusEqual => "-=",
+            BinaryOperator::AsteriskEqual => "*=",
+            BinaryOperator::Exponent => "**",
+            BinaryOperator::SlashEqual => "/=",
+            BinaryOperator::Modulus => "%",
+            BinaryOperator::ModulusEqual => "%=",
+            BinaryOperator::Equal => "=",
+            BinaryOperator::EqualEqual => "==",
+            BinaryOperator::BangEqual => "!=",
+            BinaryOperator::Less => "<",
+            BinaryOperator::Greater => ">",
+            BinaryOperator::LessEqual => "<=",
+            BinaryOperator::GreaterEqual => ">=",
+            BinaryOperator::Or => "or",
+            BinaryOperator::And => "and",
+        }
     }
 }
 
 
-fn transpile_unary_operator(operator: &UnaryOperator) -> &'static str {
-    match operator {
-        UnaryOperator::Minus => "-",
-        UnaryOperator::LogicalNot => "not",
-    }
-}
-
-
-fn transpile_binary_operator(operator: &BinaryOperator) -> &'static str {
-    match operator {
-        BinaryOperator::Plus => "+",
-        BinaryOperator::Minus => "-",
-        BinaryOperator::Asterisk => "*",
-        BinaryOperator::Slash => "/",
-        BinaryOperator::PlusEqual => "+=",
-        BinaryOperator::MinusEqual => "-=",
-        BinaryOperator::AsteriskEqual => "*=",
-        BinaryOperator::Exponent => "**",
-        BinaryOperator::SlashEqual => "/=",
-        BinaryOperator::Modulus => "%",
-        BinaryOperator::ModulusEqual => "%=",
-        BinaryOperator::Equal => "=",
-        BinaryOperator::EqualEqual => "==",
-        BinaryOperator::BangEqual => "!=",
-        BinaryOperator::Less => "<",
-        BinaryOperator::Greater => ">",
-        BinaryOperator::LessEqual => "<=",
-        BinaryOperator::GreaterEqual => ">=",
-        BinaryOperator::Or => "or",
-        BinaryOperator::And => "and",
-    }
+pub fn transpile(program: Rc<AstNode>) -> eyre::Result<String> {
+    Transpiler::new()
+        .generate_python(program)
 }
