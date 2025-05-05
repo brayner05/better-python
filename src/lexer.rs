@@ -539,6 +539,8 @@ impl <'a> Lexer <'a> {
 
             '_' => self.scan_keyword(),
 
+            '#' => self.skip_comment(),
+
             alpha if alpha.is_alphabetic() => self.scan_keyword(),
 
             digit if digit.is_digit(10) => self.scan_numeric(),
@@ -551,6 +553,16 @@ impl <'a> Lexer <'a> {
         Ok(())
     }
 
+
+    fn skip_comment(&mut self) {
+        while self.has_next() && self.peek().unwrap() != '\n' {
+            self.next();
+        }
+
+        if self.has_next() {
+            self.next();
+        }
+    }
 
     fn scan_string(&mut self) -> eyre::Result<()> {
         while self.has_next() && self.peek().unwrap() != '\"' {

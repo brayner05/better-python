@@ -72,9 +72,6 @@ impl Transpiler {
         let body = self.transpile_block(&function.body)?;
         self.decrease_indent();
 
-        // let return_type = function.return_type.clone();
-        let return_type = "";
-
         return Ok(format!("def {}({}):\n{}", name, params, body));
     }
 
@@ -168,7 +165,7 @@ impl Transpiler {
     fn transpile_unary_operator(&self, operator: &UnaryOperator) -> &'static str {
         match operator {
             UnaryOperator::Minus => "-",
-            UnaryOperator::LogicalNot => "not",
+            UnaryOperator::LogicalNot => "not ",
         }
     }
 

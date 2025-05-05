@@ -36,6 +36,7 @@ fn run_repl() {
         let parser_result = parser::generate_ast(&mut token_stream);
         if let Err(e) = &parser_result {
             eprintln!("{}", e);
+            continue 'repl;
         }
 
         let ast = parser_result.unwrap();
@@ -47,6 +48,7 @@ fn run_repl() {
             let output = transpiler::transpile(statement.clone());
             if let Err(e) = &output {
                 eprintln!("{}", e);
+                continue 'repl;
             }
             println!("{}", output.unwrap());
         }
@@ -87,7 +89,7 @@ fn main() -> eyre::Result<()> {
     let result = run_file(&mut source_file);
 
     if let Err(e) = &result {
-        eprintln!("{}", &result.unwrap_err());
+        eprintln!("{}", &e);
     }
     
     Ok(())
