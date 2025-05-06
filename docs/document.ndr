@@ -1,6 +1,0 @@
-use os
-
-if __name__ == "__main__" then
-    os.system("cargo doc")
-    print("Created Documentation!")
-endif

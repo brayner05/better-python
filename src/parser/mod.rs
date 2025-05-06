@@ -78,11 +78,18 @@ impl <'a> Parser <'a> {
             TokenType::If => return self.parse_if_statement(),
             TokenType::Use => return self.parse_use_statement(),
             TokenType::While => return self.parse_while_loop(),
+            // TokenType::Struct => return self.parse_struct_definition(),
             _ => {}
         }
 
         self.parse_equality()
     }
+
+
+    // fn parse_struct_definition(&mut self) -> ParseResult {
+    //     self.expect_next(TokenType::Struct)?;
+    //     self.next_token();
+    // }
 
 
     fn parse_use_statement(&mut self) -> eyre::Result<Rc<AstNode>> {

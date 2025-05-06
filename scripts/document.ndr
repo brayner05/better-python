@@ -1,0 +1,31 @@
+use os
+use sys
+
+# TODO: Remove once standard library is working
+def println(content) -> None
+    sys.stdout.write(content + "\n")
+enddef
+
+
+def eprintln(content) -> None
+    sys.stderr.write(content + "\n")
+enddef
+
+
+def main() -> int
+    println("Creating documentation")
+
+    # Attempt to generate documentation
+    if os.system("cargo doc") != 0 then
+        eprintln("Failed to generate documentation.")
+        return 1
+    endif
+
+    println("Created Documentation!")
+    return 0
+enddef
+
+
+if __name__ == "__main__" then
+    main()
+endif
