@@ -47,7 +47,8 @@ impl TokenType {
             | TokenType::LessEqual
             | TokenType::BangEqual
             | TokenType::Less
-            | TokenType::Greater => 1,
+            | TokenType::Greater
+            | TokenType::Equal => 1,
 
             // P3 - Addition, Subtraction, Conjunction, Disjunction
             TokenType::Plus

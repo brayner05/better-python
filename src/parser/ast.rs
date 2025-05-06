@@ -12,6 +12,8 @@ pub enum AstNode {
     IntegerLiteral(i64), FloatLiteral(f64), BooleanLiteral(bool),
     StringLiteral(String), Identifier(String),
 
+    MemberAccess(MemberAccess),
+
     LambdaFunction { params: Vec<Rc<AstNode>>, body: Vec<Rc<AstNode>> },
     FunctionDefinition(FunctionDefinition),
 
@@ -37,6 +39,20 @@ impl fmt::Display for AstNode {
 
             _ => write!(f, "{:?}", self)
         }
+    }
+}
+
+
+#[derive(Debug)]
+pub struct MemberAccess {
+    pub parent: Rc<AstNode>,
+    pub child: Rc<AstNode>
+}
+
+
+impl fmt::Display for MemberAccess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(MemberAccess {}.{})", self.parent, self.child)
     }
 }
 

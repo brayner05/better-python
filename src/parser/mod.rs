@@ -6,6 +6,9 @@ use crate::lexer::{CanBeEof, PieToken, PieTokenStream, PieValue, TokenType};
 use ast::*;
 
 
+type ParseResult = eyre::Result<Rc<AstNode>>;
+
+
 ///
 /// A structure that tracks the state of a stream of tokens, and
 /// via methods outputs an Abstract Syntax Tree (AST) constructed from
@@ -231,13 +234,19 @@ impl <'a> Parser <'a> {
     fn parse_equality(&mut self) -> eyre::Result<Rc<AstNode>> {
         let mut left = self.parse_arithmetic()?;
 
+        let equal_precedence = TokenType::EqualEqual.precedence_level();
+
         // Parse equalities until reaching the end of the expression.
-        while self.has_next() && self.peek().type_ == TokenType::EqualEqual {
-            self.next_token();
+        while self.has_next() && self.next_token_precedence() == equal_precedence {
+            let operator_token = self.next_token();
             let right = self.parse_arithmetic()?;
 
+            let operator = BinaryOperator
+                ::from(&operator_token)
+                .ok_or_eyre(format!("Unexpected {}", operator_token.lexeme.as_str()));
+
             let operation = BinaryOperation {
-                operator: BinaryOperator::EqualEqual,
+                operator: operator?,
                 left_child: left,
                 right_child: right,
             };
@@ -462,41 +471,7 @@ impl <'a> Parser <'a> {
                 Ok(Rc::new(AstNode::ReturnStatement(expr)))
             }
 
-            Identifier => {
-                self.next_token();
-                let mut value = token.as_ref().lexeme.to_string();
-
-                // ! Temporary fix, needs to be done better.
-                if self.peek().type_ == Dot {
-                    self.next_token();
-                    self.expect_next(Identifier)?;
-                    let identifier = self.next_token().lexeme.to_string();
-                    value = format!("{}.{}", value, identifier);
-                }
-
-                if self.peek().type_ == LeftParen {
-                    self.next_token();
-                    
-                    // Parse the arguments to the function
-                    let args = self.parse_argument_list()?;
-
-                    // Skip the trailing ')'
-                    self.expect_next(RightParen)?;
-                    self.next_token();
-
-                    let call = FunctionCall {
-                        function: value,
-                        args: args
-                    };
-
-                    let node = Rc::new(AstNode::FunctionCall(call));
-                    return Ok(node);
-                }
-                
-
-                let node = Rc::new(AstNode::Identifier(value));
-                Ok(node)
-            }
+            Identifier => self.parse_identifier(),
 
             LeftParen => self.parse_parentheses(),
 
@@ -536,6 +511,64 @@ impl <'a> Parser <'a> {
 
             _ => Err(eyre!("Unexpected token: {}", token.lexeme))
         }
+    }
+
+
+    ///
+    /// Parse `parent.child` where `parent` and `child` are identifiers. For example,
+    /// ```nadra
+    /// my_obj.field
+    /// ```
+    /// 
+    fn parse_member_access(&mut self, parent: Rc<AstNode>) -> ParseResult {
+        self.expect_next(TokenType::Dot)?;
+        self.next_token();
+
+        self.expect_next(TokenType::Identifier)?;
+        let child = self.parse_identifier()?;
+
+        let node = MemberAccess {
+            parent: parent,
+            child: child,
+        };
+
+        Ok(Rc::new(AstNode::MemberAccess(node)))
+    }
+
+
+    fn parse_identifier(&mut self) -> ParseResult {
+        use TokenType::{Dot, LeftParen, RightParen, Identifier};
+
+        let token = self.next_token();
+        let value = token.as_ref().lexeme.to_string();
+
+        if self.peek().type_ == Dot {
+            let node = Rc::new(AstNode::Identifier(value));
+            return self.parse_member_access(node);
+        }
+
+        if self.peek().type_ == LeftParen {
+            self.next_token();
+            
+            // Parse the arguments to the function
+            let args = self.parse_argument_list()?;
+
+            // Skip the trailing ')'
+            self.expect_next(RightParen)?;
+            self.next_token();
+
+            let call = FunctionCall {
+                function: value,
+                args: args
+            };
+
+            let node = Rc::new(AstNode::FunctionCall(call));
+            return Ok(node);
+        }
+        
+
+        let node = Rc::new(AstNode::Identifier(value));
+        Ok(node)
     }
 
 

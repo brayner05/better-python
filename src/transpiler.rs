@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{fmt::format, rc::Rc};
 use color_eyre::eyre::{self, Ok};
 use crate::parser::ast::*;
 
@@ -191,6 +191,12 @@ impl PythonTranspiler {
 
             AstNode::UseStatement(use_statement) 
                 => format!("import {}", &use_statement.namespace),
+
+            AstNode::MemberAccess(member_access) => {
+                let parent = self.generate_python(member_access.parent.clone())?;
+                let child = self.generate_python(member_access.child.clone())?;
+                format!("{}.{}", parent, child)
+            }
         };
 
         Ok(python_code)
