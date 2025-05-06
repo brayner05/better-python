@@ -17,6 +17,7 @@ pub enum AstNode {
 
     IfStatement(IfStatement),
     ReturnStatement(ReturnStatement),
+    UseStatement(UseStatement),
     WhileLoop(WhileLoop)
 }
 
@@ -40,47 +41,26 @@ impl fmt::Display for AstNode {
 }
 
 
-impl AstNode {
-    pub fn is_equality_operator(&self) -> bool {
-        let operation: &BinaryOperation;
-
-        match self {
-            AstNode::BinaryOperation(op) => operation = op,
-            _ => return false,
-        };
-
-        match operation.operator {
-            BinaryOperator::EqualEqual
-            | BinaryOperator::BangEqual
-            | BinaryOperator::LessEqual
-            | BinaryOperator::GreaterEqual => true,
-
-            _ => false
-        }
-    }
+#[derive(Debug)]
+pub struct UseStatement {
+    pub namespace: String
+}
 
 
-    pub fn is_assignment_operator(&self) -> bool {
-        let operation: &BinaryOperation;
-
-        match self {
-            AstNode::BinaryOperation(op) => operation = op,
-            _ => return false,
-        };
-
-        match operation.operator {
-            BinaryOperator::PlusEqual
-            | BinaryOperator::MinusEqual
-            | BinaryOperator::AsteriskEqual
-            | BinaryOperator::SlashEqual
-            | BinaryOperator::ModulusEqual => true,
-
-            _ => false
-        }
+impl fmt::Display for UseStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(Use {})", &self.namespace)
     }
 }
 
 
+///
+/// A structure representing the AST equivalent of a while loop.
+/// 
+/// # Fields
+/// - `condition` - The condition/predicate of the while loop.
+/// - `body` - The code to execute while `condition == true`.
+/// 
 #[derive(Debug)]
 pub struct WhileLoop {
     pub condition: Rc<AstNode>,
@@ -95,6 +75,15 @@ impl fmt::Display for WhileLoop {
 }
 
 
+///
+/// A structure representing a unary operation on the AST.
+/// A unary operation has the highest precedence of an expression, other
+/// than expressions in parentheses.
+/// 
+/// # Fields
+/// - `operator` - The operator used in the expression.
+/// - `operand` - The operand which the operator will operate on.
+/// 
 #[derive(Debug)]
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
@@ -109,6 +98,15 @@ impl fmt::Display for UnaryOperation {
 }
 
 
+///
+/// A structure representing a binary operation on the AST.
+/// A binary operation has a left-hand side and a right-hand side.
+/// 
+/// # Fields
+/// - `operator` - The operator to apply to the operands.
+/// - `left_child` - The left-hand operand. Many operations are left associative.
+/// - `right_child` - The right-hand operand.
+/// 
 #[derive(Debug)]
 pub struct BinaryOperation {
     pub operator: BinaryOperator,
@@ -124,6 +122,14 @@ impl fmt::Display for BinaryOperation {
 }
 
 
+///
+/// A structure representing an if statement on the AST.
+/// 
+/// # Fields
+/// `condition` - The condition of the if statement. The `body` of the if statement
+/// will only be executed if `condition` evaluates to `true`.
+/// ``
+/// 
 #[derive(Debug)]
 pub struct IfStatement {
     pub condition: Rc<AstNode>,
@@ -138,6 +144,24 @@ impl fmt::Display for IfStatement {
 }
 
 
+
+///
+/// A structure representing a function definition on the AST.
+/// 
+/// # Fields
+/// - `name` - The name or identifier of the function which will be used to identify 
+/// the function.
+/// - `return_type` - The type that the function will return. If the function does not return a value
+/// it should be marked as follows:
+/// ```nadra
+/// def hello_world() -> None
+///     print("Hello, World!")
+/// enddef
+/// ```
+/// - `param_list` - The parameters of the function.
+/// - `body` - A list of statements that will be executed every time the 
+/// function is called.
+/// 
 #[derive(Debug)]
 pub struct FunctionDefinition {
     pub name: String,
@@ -154,6 +178,13 @@ impl fmt::Display for FunctionDefinition {
 }
 
 
+///
+/// A structure representing a function-call on the AST.
+/// 
+/// # Fields
+/// - `function` - The name/identifier of the function to call.
+/// - `args` - Any arguments that will be passed to the function.
+/// 
 #[derive(Debug)]
 pub struct FunctionCall {
     pub function: String,
@@ -182,6 +213,10 @@ impl fmt::Display for LambdaFunction {
 }
 
 
+///
+/// A unary operator is an operator which is used with only one
+/// operand.
+/// 
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Minus, LogicalNot
@@ -195,6 +230,9 @@ impl fmt::Display for UnaryOperator {
 }
 
 
+///
+/// A binary operator is an operator which takes two operands.
+/// 
 #[derive(Debug, Clone)]
 pub enum BinaryOperator {
     Plus, Minus, Asterisk, Slash,
@@ -242,6 +280,14 @@ impl fmt::Display for BinaryOperator {
 }
 
 
+///
+/// A structure representing a return statement on the AST.
+/// 
+/// # Fields
+/// - `body` - The value to return.
+/// 
+/// TODO: Change the type of `body` to `Option<Rc<AstNode>>` to permit returning no value.
+/// 
 #[derive(Debug)]
 pub struct ReturnStatement {
     pub body: Rc<AstNode>

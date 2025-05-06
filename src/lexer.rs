@@ -25,7 +25,7 @@ pub enum TokenType {
 
     Enum, EndEnum, Struct, EndStruct, Def, EndDef,
     If, Then, EndIf, Else, For, Do, Done, While, Return,
-    Break, Continue,
+    Break, Continue, Use,
 
     Eof
 }
@@ -327,6 +327,7 @@ impl KeywordLookup {
         map.insert(String::from("break"), TokenType::Break);
         map.insert(String::from("continue"), TokenType::Continue);
         map.insert(String::from("type"), TokenType::TypeAlias);
+        map.insert(String::from("use"), TokenType::Use);
 
         Self { keyword_tokens: map }
     }

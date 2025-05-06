@@ -3,12 +3,21 @@ use color_eyre::eyre::{self, Ok};
 use crate::parser::ast::*;
 
 
-struct Transpiler {
+
+///
+/// A structure that holds the state of the transpiler whilst
+/// converting an AST to Python.
+/// 
+/// # Fields
+/// - `indent` - The current indentation of the code. Crucial for generating Python code
+/// as it relies of indentation for scope.
+/// 
+struct PythonTranspiler {
     indent: u16
 }
 
 
-impl Transpiler {
+impl PythonTranspiler {
     pub fn new() -> Self {
         Self {
             indent: 0
@@ -16,6 +25,10 @@ impl Transpiler {
     }
 
 
+    ///
+    /// 'Indent' the code by returning the *n* tabs where
+    /// *n* = `self.indent`
+    /// 
     fn indent_code(&self) -> String {
         "\t".repeat(self.indent as usize)
     }
@@ -49,6 +62,12 @@ impl Transpiler {
     }
 
 
+    ///
+    /// Transpile a code-block with the appropriate indentation.
+    /// 
+    /// # Params
+    /// - `block` - The statements in the 'block' which will each be indented.
+    /// 
     fn transpile_block(&mut self, block: &Vec<Rc<AstNode>>) -> eyre::Result<String> {
         block.iter()
         .map(|stmt| {
@@ -110,28 +129,41 @@ impl Transpiler {
     }
 
 
+    ///
+    /// Increase the indentation level of the Python code by 1 tab.
+    /// 
     fn increase_indent(&mut self) -> u16 {
         self.indent += 1;
         self.indent
     }
 
 
+    ///
+    /// Decrease the indentation of the Python code by 1 tab, unless
+    /// the indentation level is `0`, in which case nothing will happen.
+    /// 
     fn decrease_indent(&mut self) -> u16 {
         self.indent = 0.max(self.indent - 1);
         self.indent
     }
 
 
-    pub fn generate_python(&mut self, program: Rc<AstNode>) -> eyre::Result<String> {
+    ///
+    /// Transpile a Nadra program to Python via it's Abstract Syntax Tree (AST).
+    /// 
+    /// # Params
+    /// - `program` - The root node of the AST to convert to Python.
+    /// 
+    fn generate_python(&mut self, program: Rc<AstNode>) -> eyre::Result<String> {
         let python_code = match program.as_ref() {
             AstNode::UnaryOperation(operation) 
-                => self.transpile_unary_operation(operation)?,
+                        => self.transpile_unary_operation(operation)?,
 
             AstNode::BinaryOperation(operation) 
-                => self.transpile_binary_operation(operation)?,
+                        => self.transpile_binary_operation(operation)?,
 
             AstNode::FunctionCall(call) 
-                => self.transpile_function_call(call)?,
+                        => self.transpile_function_call(call)?,
 
             AstNode::IntegerLiteral(x) => x.to_string(),
 
@@ -146,16 +178,19 @@ impl Transpiler {
             AstNode::LambdaFunction { params, body } => todo!(),
 
             AstNode::FunctionDefinition(function)
-                => self.transpile_function_definition(function)?,
-
+                        => self.transpile_function_definition(function)?,
+                        
             AstNode::IfStatement(statement) 
-                => self.transpile_if_statement(statement)?,
+                        => self.transpile_if_statement(statement)?,
 
             AstNode::ReturnStatement(statement)
-                => self.transpile_return_statement(statement)?,
-            
+                        => self.transpile_return_statement(statement)?,
+
             AstNode::WhileLoop(while_loop) 
-                => self.transpile_while_loop(while_loop)?,
+                        => self.transpile_while_loop(while_loop)?,
+
+            AstNode::UseStatement(use_statement) 
+                => format!("import {}", &use_statement.namespace),
         };
 
         Ok(python_code)
@@ -197,7 +232,25 @@ impl Transpiler {
 }
 
 
+///
+/// Convert an Abstract Syntax Tree (AST) to Python code. For example, the AST denoted by
+/// ```
+///  (EqEq 
+///     (Mult 2 (Call fact 5)) 
+///     240
+/// )
+/// ```
+/// Generates the following python code:
+/// ```py
+/// 2 * fact(5) == 240
+/// ```
+/// 
+/// # Params
+/// - `program` - The root node of the AST to transpile. Note that a Nadra program may
+/// contain several ASTs, one for each top-level statement.
+/// 
 pub fn transpile(program: Rc<AstNode>) -> eyre::Result<String> {
-    Transpiler::new()
+    // Transpile the Nadra AST to Python
+    PythonTranspiler::new()
         .generate_python(program)
 }

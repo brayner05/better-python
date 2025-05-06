@@ -40,9 +40,6 @@ fn run_repl() {
         }
 
         let ast = parser_result.unwrap();
-        // for stmt in &ast {
-        //     println!("{}", stmt.as_ref())
-        // }
 
         for statement in &ast {
             let output = transpiler::transpile(statement.clone());
@@ -75,14 +72,18 @@ fn run_file(file: &mut File) -> eyre::Result<()> {
 
 
 fn main() -> eyre::Result<()> {
+    // Initialize color_eyre (for errors)
     color_eyre::install()?;
 
+    // Check whether or not a Nadra file was passed as input.
     let arguments: Vec<String> = std::env::args().collect();
     if arguments.len() < 2 {
+        // If no, then run the Nadra repl.
         run_repl();
         return Ok(());
     }
 
+    // If an input file was supplied then compile that file.
     let source_path = arguments[1].clone();
     let mut source_file = fs::File::open(source_path)?;
 
